@@ -10,13 +10,143 @@ LICENSE
   See end of file for detailed license information.
 
 */
-#include "../lmtyn.h" /* Last Modelling Tool You Need */
-#include "../deps/test.h" /* Simple Testing framework    */
-#include "../deps/perf.h" /* Simple Performance profiler */
+#include "../lmtyn.h"     /* Lucid Modelling Tool You Need */
+#include "../deps/test.h" /* Simple Testing framework      */
+#include "../deps/csr.h"  /* Software Based Renderer       */
+#include "../deps/vm.h"   /* Linear Algebra Library        */
+
+#include "stdlib.h"
+#include "stdio.h"
+
+static void csr_save_ppm(char *filename_format, int frame, csr_context *model)
+{
+  FILE *fp;
+  char filename[64];
+
+  /* Format the filename with the frame number */
+  sprintf(filename, filename_format, frame);
+
+  fp = fopen(filename, "wb");
+
+  if (!fp)
+  {
+    fprintf(stderr, "Error: Could not open file %s for writing.\n", filename);
+    return;
+  }
+
+  /* PPM header */
+  fprintf(fp, "P6\n%d %d\n255\n", model->width, model->height);
+
+  /* Pixel data */
+  fwrite(model->framebuffer, sizeof(csr_color), (size_t)(model->width * model->height), fp);
+
+  fclose(fp);
+}
+
+static u8 csr_init(csr_context *ctx, u32 width, u32 height)
+{
+  u32 memory_size = (width * height * sizeof(csr_color)) + (width * height * sizeof(f32));
+  void *memory = (void *)malloc(memory_size);
+
+  if (!memory)
+  {
+    return 1;
+  }
+
+  if (!csr_init_model(ctx, memory, memory_size, (int)width, (int)height))
+  {
+    return 1;
+  }
+
+  return 0;
+}
 
 int main(void)
 {
-  PERF_PROFILE(assert(1 == 1));
+  /* #############################################################################
+   * # LMTYN Usage
+   * #############################################################################
+   */
+  lmtyn_shape_circle pillar[5] = {
+      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f}, /* bottom    */
+      {0.0f, 1.0f, 0.0f, 0.6f, 0.0f, 1.0f, 0.0f}, /* low mid   */
+      {0.0f, 2.0f, 0.0f, 0.5f, 0.0f, 1.0f, 0.0f}, /* center    */
+      {0.0f, 3.0f, 0.0f, 0.6f, 0.0f, 1.0f, 0.0f}, /* upper mid */
+      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f}  /* top       */
+  };
+
+  lmtyn_mesh mesh = {0};
+  mesh.vertices_capacity = 1024;
+  mesh.indices_capacity = 1024;
+  mesh.vertices = malloc(sizeof(f32) * mesh.vertices_capacity);
+  mesh.indices = malloc(sizeof(u32) * mesh.indices_capacity);
+
+  assert(lmtyn_mesh_generate(
+      &mesh,
+      pillar,
+      sizeof(pillar) / sizeof(pillar[0]),
+      4));
+
+  assert(lmtyn_mesh_normalize(
+      &mesh,
+      0.0f, 0.0f, 0.0f,
+      1.0f));
+
+  /* #############################################################################
+   * # Render to PPM Frames
+   * #############################################################################
+   */
+  {
+
+    csr_color clear_color = {40, 40, 40};
+    csr_context ctx = {0};
+
+    csr_init(&ctx, 600, 400);
+
+    {
+      v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
+      v3 cam_position = vm_v3(0.0f, 0.6f, 1.0f);
+      v3 cam_look_at_pos = vm_v3(0.0f, 0.0f, 0.0f);
+      float cam_fov = 90.0f;
+
+      m4x4 projection = vm_m4x4_perspective(vm_radf(cam_fov), (f32)ctx.width / (f32)ctx.height, 0.1f, 1000.0f);
+      m4x4 view = vm_m4x4_lookAt(cam_position, cam_look_at_pos, world_up);
+      m4x4 projection_view = vm_m4x4_mul(projection, view);
+
+      m4x4 model_base = vm_m4x4_translate(vm_m4x4_identity, vm_v3_zero);
+      v3 model_rotation_x = vm_v3(1.0f, 0.0f, 0.0);
+      v3 model_rotation_y = vm_v3(0.0f, 1.0f, 0.0);
+
+      int frame;
+
+      for (frame = 0; frame < 200; ++frame)
+      {
+
+        /* Rotate the cube around the model_rotation axis */
+        m4x4 model_view_projection = vm_m4x4_mul(
+            projection_view,
+            frame == 0 ? model_base : vm_m4x4_rotate(model_base, vm_radf(5.0f * (float)(frame + 1)), (frame / 100) % 2 == 0 ? model_rotation_x : model_rotation_y));
+
+        /* Clear Screen Frame and Depth Buffer */
+        csr_render_clear_screen(&ctx, clear_color);
+
+        /* Render cube */
+        csr_render(
+            &ctx,
+            (frame / 50) % 2 == 0
+                ? CSR_RENDER_WIREFRAME
+                : CSR_RENDER_SOLID,
+            CSR_CULLING_CCW_BACKFACE, 3,
+            mesh.vertices, mesh.vertices_size,
+            (int *)mesh.indices, mesh.indices_size,
+            model_view_projection.e);
+
+        csr_save_ppm("test_%05d.ppm", frame, &ctx);
+      }
+    }
+  }
+
+  printf("[lmtyn] finished\n");
 
   return 0;
 }
