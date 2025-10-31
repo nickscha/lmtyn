@@ -45,20 +45,20 @@ static void csr_save_ppm(char *filename_format, int frame, csr_context *model)
 
 static u8 csr_init(csr_context *ctx, u32 width, u32 height)
 {
-  u32 memory_size = (width * height * sizeof(csr_color)) + (width * height * sizeof(f32));
+  u32 memory_size = csr_memory_size((int)width, (int)height);
   void *memory = (void *)malloc(memory_size);
 
   if (!memory)
   {
-    return 1;
+    return 0;
   }
 
   if (!csr_init_model(ctx, memory, memory_size, (int)width, (int)height))
   {
-    return 1;
+    return 0;
   }
 
-  return 0;
+  return 1;
 }
 
 int main(void)
@@ -101,7 +101,7 @@ int main(void)
     csr_color clear_color = {40, 40, 40};
     csr_context ctx = {0};
 
-    csr_init(&ctx, 600, 400);
+    assert(csr_init(&ctx, 600, 400));
 
     {
       v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
