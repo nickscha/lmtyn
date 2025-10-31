@@ -448,6 +448,7 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_normalize(
   {
     /* move to origin first, then scale, then move to target */
     f32 *v = &mesh->vertices[i * 3];
+
     v[0] = (v[0] - center_x) * scale + target_x;
     v[1] = (v[1] - center_y) * scale + target_y;
     v[2] = (v[2] - center_z) * scale + target_z;

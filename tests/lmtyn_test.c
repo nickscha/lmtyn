@@ -76,8 +76,8 @@ int main(void)
   };
 
   lmtyn_mesh mesh = {0};
-  mesh.vertices_capacity = sizeof(f32) * 1024;
-  mesh.indices_capacity = sizeof(u32) * 1024;
+  mesh.vertices_capacity = sizeof(f32) * 4096;
+  mesh.indices_capacity = sizeof(u32) * 4096;
   mesh.vertices = malloc(sizeof(f32) * mesh.vertices_capacity);
   mesh.indices = malloc(sizeof(u32) * mesh.indices_capacity);
 
