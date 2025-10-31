@@ -251,6 +251,7 @@ typedef struct lmtyn_mesh
 
 LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     lmtyn_mesh *mesh,
+    u8 winding_cw,
     lmtyn_shape_circle *circles,
     u32 circles_count,
     u32 segments)
@@ -347,24 +348,13 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
       u32 currUp = (c + 1) * segments + s;
       u32 nextUp = (c + 1) * segments + (s + 1) % segments;
 
-      /* Clockwise
       mesh->indices[i++] = curr;
-      mesh->indices[i++] = nextUp;
-      mesh->indices[i++] = currUp;
+      mesh->indices[i++] = winding_cw ? nextUp : currUp;
+      mesh->indices[i++] = winding_cw ? currUp : nextUp;
 
       mesh->indices[i++] = curr;
-      mesh->indices[i++] = next;
-      mesh->indices[i++] = nextUp;
-      */
-
-      /* CCW triangle winding (correct for backface culling) */
-      mesh->indices[i++] = curr;
-      mesh->indices[i++] = currUp;
-      mesh->indices[i++] = nextUp;
-
-      mesh->indices[i++] = curr;
-      mesh->indices[i++] = nextUp;
-      mesh->indices[i++] = next;
+      mesh->indices[i++] = winding_cw ? next : nextUp;
+      mesh->indices[i++] = winding_cw ? nextUp : next;
     }
   }
 
@@ -373,15 +363,9 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
   {
     u32 next = (s + 1) % segments;
 
-    /* Clockwise
     mesh->indices[i++] = bottomCenterIndex;
-    mesh->indices[i++] = next;
-    mesh->indices[i++] = s;
-    */
-
-    mesh->indices[i++] = bottomCenterIndex;
-    mesh->indices[i++] = s;
-    mesh->indices[i++] = next;
+    mesh->indices[i++] = winding_cw ? next : s;
+    mesh->indices[i++] = winding_cw ? s : next;
   }
 
   /* Top cap */
@@ -391,15 +375,9 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
   {
     u32 next = (s + 1) % segments;
 
-    /* Clockwise
     mesh->indices[i++] = topCenterIndex;
-    mesh->indices[i++] = topStart + s;
-    mesh->indices[i++] = topStart + next;
-    */
-
-    mesh->indices[i++] = topCenterIndex;
-    mesh->indices[i++] = topStart + next;
-    mesh->indices[i++] = topStart + s;
+    mesh->indices[i++] = winding_cw ? topStart + s : topStart + next;
+    mesh->indices[i++] = winding_cw ? topStart + next : topStart + s;
   }
 
   return 1;
@@ -433,35 +411,13 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_normalize(
     f32 y = mesh->vertices[i * 3 + 1];
     f32 z = mesh->vertices[i * 3 + 2];
 
-    if (x < min_x)
-    {
-      min_x = x;
-    }
+    min_x = (x < min_x) ? x : min_x;
+    min_y = (y < min_y) ? y : min_y;
+    min_z = (z < min_z) ? z : min_z;
 
-    if (y < min_y)
-    {
-      min_y = y;
-    }
-
-    if (z < min_z)
-    {
-      min_z = z;
-    }
-
-    if (x > max_x)
-    {
-      max_x = x;
-    }
-
-    if (y > max_y)
-    {
-      max_y = y;
-    }
-
-    if (z > max_z)
-    {
-      max_z = z;
-    }
+    max_x = (x > max_x) ? x : max_x;
+    max_y = (y > max_y) ? y : max_y;
+    max_z = (z > max_z) ? z : max_z;
   }
 
   /* Compute center and size */
@@ -474,16 +430,8 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_normalize(
   size_z = max_z - min_z;
 
   size_max = size_x;
-
-  if (size_y > size_max)
-  {
-    size_max = size_y;
-  }
-
-  if (size_z > size_max)
-  {
-    size_max = size_z;
-  }
+  size_max = (size_y > size_max) ? size_y : size_max;
+  size_max = (size_z > size_max) ? size_z : size_max;
 
   if (size_max < 1e-6f)
   {
@@ -499,13 +447,10 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_normalize(
   for (i = 0; i < mesh->vertices_size; ++i)
   {
     /* move to origin first, then scale, then move to target */
-    f32 x = (mesh->vertices[i * 3 + 0] - center_x) * scale + target_x;
-    f32 y = (mesh->vertices[i * 3 + 1] - center_y) * scale + target_y;
-    f32 z = (mesh->vertices[i * 3 + 2] - center_z) * scale + target_z;
-
-    mesh->vertices[i * 3 + 0] = x;
-    mesh->vertices[i * 3 + 1] = y;
-    mesh->vertices[i * 3 + 2] = z;
+    f32 *v = &mesh->vertices[i * 3];
+    v[0] = (v[0] - center_x) * scale + target_x;
+    v[1] = (v[1] - center_y) * scale + target_y;
+    v[2] = (v[2] - center_z) * scale + target_z;
   }
 
   return 1;
