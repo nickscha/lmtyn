@@ -19,7 +19,7 @@ LICENSE
   See end of file for detailed license information.
 
 */
-#include "../lmtyn.h" /* Last Modelling Tool You Need */
+#include "../lmtyn.h" /* Lucid Modelling Tool You Need */
 
 #define assert(expression)  \
   if (!(expression))        \

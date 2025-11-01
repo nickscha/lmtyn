@@ -72,7 +72,7 @@ int main(void)
       {0.0f, 1.0f, 0.0f, 0.6f, 0.0f, 1.0f, 0.0f}, /* low mid   */
       {0.0f, 2.0f, 0.0f, 0.5f, 0.0f, 1.0f, 0.0f}, /* center    */
       {0.0f, 3.0f, 0.0f, 0.6f, 0.0f, 1.0f, 0.0f}, /* upper mid */
-      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f}, /* top       */
+      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f}, /* top low   */
       {0.0f, 4.5f, 0.0f, 0.5f, 0.0f, 1.0f, 0.0f}  /* top       */
   };
 
@@ -107,7 +107,7 @@ int main(void)
 
     {
       v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
-      v3 cam_position = vm_v3(0.0f, 0.6f, 1.0f);
+      v3 cam_position = vm_v3(0.0f, 0.6f, 0.6f);
       v3 cam_look_at_pos = vm_v3(0.0f, 0.0f, 0.0f);
       float cam_fov = 90.0f;
 

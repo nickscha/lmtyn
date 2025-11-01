@@ -33,13 +33,51 @@ For more information please look at the "lmtyn.h" file or take a look at the "ex
 Download or clone lmtyn.h and include it in your project.
 
 ```C
-#include "lmtyn.h" /* Last Modelling Tool You Need */
+#include "lmtyn.h" /* Lucid Modelling Tool You Need */
 
 int main() {
+    /* (1) Define a shape (center pos, radius, normal/direction) */
+    lmtyn_shape_circle pillar[] = {
+      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f}, /* bottom    */
+      {0.0f, 1.0f, 0.0f, 0.6f, 0.0f, 1.0f, 0.0f}, /* low mid   */
+      {0.0f, 2.0f, 0.0f, 0.5f, 0.0f, 1.0f, 0.0f}, /* center    */
+      {0.0f, 3.0f, 0.0f, 0.6f, 0.0f, 1.0f, 0.0f}, /* upper mid */
+      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f}, /* top low   */
+      {0.0f, 4.5f, 0.0f, 0.5f, 0.0f, 1.0f, 0.0f}  /* top       */
+    };
+
+    /* (2) Allocate enough space for vertices and indices buffer */
+    lmtyn_mesh mesh = {0};
+    mesh.vertices_capacity = sizeof(f32) * 4096;
+    mesh.indices_capacity = sizeof(u32) * 4096;
+    mesh.vertices = malloc(sizeof(f32) * mesh.vertices_capacity);
+    mesh.indices = malloc(sizeof(u32) * mesh.indices_capacity);
+
+     /* (3) Generate the vertices/indices (here we use 4 segments for low-poly look) */
+    lmtyn_mesh_generate(
+      &mesh,
+      0,
+      pillar,
+      sizeof(pillar) / sizeof(pillar[0]),
+      4);
+
+    /* (4) Center Mesh on (0,0,0) and scale to 1 unit */ 
+    lmtyn_mesh_normalize(
+      &mesh,
+      0.0f, 0.0f, 0.0f,
+      1.0f);
+
+    /* (5) Now you can use the mesh.vertices / mesh.indices data */
 
     return 0;
 }
 ```
+
+This is the generated mesh:
+
+<p align="center">
+<a href="https://github.com/nickscha/lmtyn"><img src="assets/lmtyn_pillar.gif"></a>
+</p>
 
 ## Run Example: nostdlib, freestsanding
 
