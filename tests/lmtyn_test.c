@@ -148,6 +148,8 @@ int main(void)
     }
   }
 
+  printf("[lmtyn] vertices_size: %u\n", mesh.vertices_size);
+  printf("[lmtyn]  indices_size: %u\n", mesh.indices_size);
   printf("[lmtyn] finished\n");
 
   return 0;

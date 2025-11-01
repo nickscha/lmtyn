@@ -268,7 +268,7 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     return 0;
   }
 
-  vertices_count = circles_count * segments + 2;
+  vertices_count = (circles_count * segments * 3) + 6;
   indices_count = (circles_count - 1) * segments * 6 + segments * 6;
 
   if (mesh->vertices_capacity < sizeof(f32) * 3 * vertices_count ||
