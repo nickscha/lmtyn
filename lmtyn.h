@@ -256,10 +256,6 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     u32 circles_count,
     u32 segments)
 {
-
-  u32 vertices_count;
-  u32 indices_count;
-
   u32 i, c, s, v;
   u32 bottomCenterIndex, topCenterIndex, topStart;
 
@@ -268,17 +264,14 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     return 0;
   }
 
-  vertices_count = (circles_count * segments * 3) + 6;
-  indices_count = (circles_count - 1) * segments * 6 + segments * 6;
+  mesh->vertices_size = (circles_count * segments * 3) + 6;
+  mesh->indices_size = (circles_count - 1) * segments * 6 + segments * 6;
 
-  if (mesh->vertices_capacity < sizeof(f32) * 3 * vertices_count ||
-      mesh->indices_capacity < sizeof(u32) * indices_count)
+  if (mesh->vertices_capacity < sizeof(f32) * mesh->vertices_size ||
+      mesh->indices_capacity < sizeof(u32) * mesh->indices_size)
   {
     return 0;
   }
-
-  mesh->vertices_size = vertices_count;
-  mesh->indices_size = indices_count;
 
   i = 0;
   v = 0;
@@ -380,7 +373,10 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     mesh->indices[i++] = winding_cw ? topStart + next : topStart + s;
   }
 
-  return 1;
+  /* If there is a mismatch between pre-calculated vertices/indices
+     and the generated amount of vertices and indices fail
+   */
+  return v == mesh->vertices_size && i == mesh->indices_size;
 }
 
 LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_normalize(
