@@ -48,7 +48,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
       - name: Compile lmtyn tests
-        run: ${{ matrix.cc }} -O2 -std=c89 -pedantic -Wall -Wextra -Werror -Wvla -Wconversion -Wdouble-promotion -Wsign-conversion -Wuninitialized -Winit-self -Wunused -Wunused-macros -Wunused-local-typedefs -o lmtyn_test_${{ matrix.cc }}.exe tests/lmtyn_test.c
+        run: ${{ matrix.cc }} -O2 -std=c89 -pedantic -Wall -Wextra -Werror -Wvla -Wconversion -Wdouble-promotion -Wsign-conversion -Wuninitialized -Winit-self -Wunused -Wunused-macros -Wunused-local-typedefs -D_CRT_SECURE_NO_WARNINGS -o lmtyn_test_${{ matrix.cc }}.exe tests/lmtyn_test.c
       - name: Run lmtyn tests
         run: .\lmtyn_test_${{ matrix.cc }}.exe
       - name: Upload Artifact

@@ -45,7 +45,7 @@ static void csr_save_ppm(char *filename_format, int frame, csr_context *model)
 
 static u8 csr_init(csr_context *ctx, u32 width, u32 height)
 {
-  u32 memory_size = csr_memory_size((int)width, (int)height);
+  u32 memory_size = (u32)csr_memory_size((int)width, (int)height);
   void *memory = (void *)malloc(memory_size);
 
   if (!memory)
