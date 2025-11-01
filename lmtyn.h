@@ -332,15 +332,30 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
   lmtyn_v3 center, tangent, normal, prevNormal, U, V;
   f32 radius, eps = 1e-6f;
   lmtyn_v3 up = {0.0f, 1.0f, 0.0f};
+  u8 is_closed;
+  u32 circleCountWrapped;
 
   if (!mesh || !circles || circles_count == 0 || segments == 0)
   {
     return 0;
   }
 
+  /* does the last circle connects with the first one? */
+  is_closed = (circles[0].center_x == circles[circles_count - 1].center_x &&
+               circles[0].center_y == circles[circles_count - 1].center_y &&
+               circles[0].center_z == circles[circles_count - 1].center_z);
+
   /* precompute sizes */
-  mesh->vertices_size = (circles_count * segments * 3) + 6;
-  mesh->indices_size = (circles_count - 1) * segments * 6 + segments * 6;
+  if (is_closed)
+  {
+    mesh->vertices_size = circles_count * segments * 3;
+    mesh->indices_size = circles_count * segments * 6;
+  }
+  else
+  {
+    mesh->vertices_size = (circles_count * segments * 3) + 6;
+    mesh->indices_size = (circles_count - 1) * segments * 6 + segments * 6;
+  }
 
   if (mesh->vertices_capacity < sizeof(f32) * mesh->vertices_size ||
       mesh->indices_capacity < sizeof(u32) * mesh->indices_size)
@@ -437,27 +452,34 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
   }
 
   /* center vertices for caps */
-  bottomCenterIndex = v / 3;
+  if (!is_closed)
+  {
+    bottomCenterIndex = v / 3;
 
-  mesh->vertices[v++] = circles[0].center_x;
-  mesh->vertices[v++] = circles[0].center_y;
-  mesh->vertices[v++] = circles[0].center_z;
+    mesh->vertices[v++] = circles[0].center_x;
+    mesh->vertices[v++] = circles[0].center_y;
+    mesh->vertices[v++] = circles[0].center_z;
 
-  topCenterIndex = v / 3;
+    topCenterIndex = v / 3;
 
-  mesh->vertices[v++] = circles[circles_count - 1].center_x;
-  mesh->vertices[v++] = circles[circles_count - 1].center_y;
-  mesh->vertices[v++] = circles[circles_count - 1].center_z;
+    mesh->vertices[v++] = circles[circles_count - 1].center_x;
+    mesh->vertices[v++] = circles[circles_count - 1].center_y;
+    mesh->vertices[v++] = circles[circles_count - 1].center_z;
+  }
 
   /* sides */
-  for (c = 0; c < circles_count - 1; ++c)
+  circleCountWrapped = is_closed ? circles_count : circles_count - 1;
+
+  for (c = 0; c < circleCountWrapped; ++c)
   {
+    u32 nextCircle = (c + 1) % circles_count; /* wrap to first circle */
+
     for (s = 0; s < segments; ++s)
     {
       u32 curr = c * segments + s;
       u32 next = c * segments + (s + 1) % segments;
-      u32 currUp = (c + 1) * segments + s;
-      u32 nextUp = (c + 1) * segments + (s + 1) % segments;
+      u32 currUp = nextCircle * segments + s;
+      u32 nextUp = nextCircle * segments + (s + 1) % segments;
 
       mesh->indices[i++] = curr;
       mesh->indices[i++] = winding_cw ? nextUp : currUp;
@@ -469,23 +491,26 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     }
   }
 
-  /* bottom cap */
-  for (s = 0; s < segments; ++s)
+  if (!is_closed)
   {
-    u32 next = (s + 1) % segments;
-    mesh->indices[i++] = bottomCenterIndex;
-    mesh->indices[i++] = winding_cw ? next : s;
-    mesh->indices[i++] = winding_cw ? s : next;
-  }
+    /* bottom cap */
+    for (s = 0; s < segments; ++s)
+    {
+      u32 next = (s + 1) % segments;
+      mesh->indices[i++] = bottomCenterIndex;
+      mesh->indices[i++] = winding_cw ? next : s;
+      mesh->indices[i++] = winding_cw ? s : next;
+    }
 
-  /* top cap */
-  topStart = (circles_count - 1) * segments;
-  for (s = 0; s < segments; ++s)
-  {
-    u32 next = (s + 1) % segments;
-    mesh->indices[i++] = topCenterIndex;
-    mesh->indices[i++] = winding_cw ? topStart + s : topStart + next;
-    mesh->indices[i++] = winding_cw ? topStart + next : topStart + s;
+    /* top cap */
+    topStart = (circles_count - 1) * segments;
+    for (s = 0; s < segments; ++s)
+    {
+      u32 next = (s + 1) % segments;
+      mesh->indices[i++] = topCenterIndex;
+      mesh->indices[i++] = winding_cw ? topStart + s : topStart + next;
+      mesh->indices[i++] = winding_cw ? topStart + next : topStart + s;
+    }
   }
 
   return v == mesh->vertices_size && i == mesh->indices_size;

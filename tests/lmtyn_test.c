@@ -61,22 +61,44 @@ static u8 csr_init(csr_context *ctx, u32 width, u32 height)
   return 1;
 }
 
+lmtyn_shape_circle pillar[] = {
+    {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* bottom    */
+    {0.0f, 1.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* low mid   */
+    {0.0f, 2.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}, /* center    */
+    {0.0f, 3.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* upper mid */
+    {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* top low   */
+    {0.0f, 4.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}  /* top       */
+};
+
+lmtyn_shape_circle arc[] = {
+    {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* base */
+    {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* move up */
+    {1.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* slightly to right */
+    {3.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+    {5.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+    {6.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+    {6.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+};
+
+lmtyn_shape_circle circle[] = {
+    {1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0},
+    {0.707f, 0.707f, 0.0f, 0.3f, 0, 0, 0},
+    {0.0f, 1.0f, 0.0f, 0.3f, 0, 0, 0},
+    {-0.707f, 0.707f, 0.0f, 0.3f, 0, 0, 0},
+    {-1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0},
+    {-0.707f, -0.707f, 0.0f, 0.3f, 0, 0, 0},
+    {0.0f, -1.0f, 0.0f, 0.3f, 0, 0, 0},
+    {0.707f, -0.707f, 0.0f, 0.3f, 0, 0, 0},
+    {1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0} /* Repeat first circle */
+};
+
 int main(void)
 {
+
   /* #############################################################################
    * # LMTYN Usage
    * #############################################################################
    */
-  lmtyn_shape_circle pillar[] = {
-      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* base */
-      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* move up */
-      {1.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* slightly to right */
-      {3.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-      {5.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-      {6.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-      {6.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-  };
-
   lmtyn_mesh mesh = {0};
   mesh.vertices_capacity = sizeof(f32) * 4096;
   mesh.indices_capacity = sizeof(u32) * 4096;
@@ -86,8 +108,8 @@ int main(void)
   assert(lmtyn_mesh_generate(
       &mesh,
       0,
-      pillar,
-      sizeof(pillar) / sizeof(pillar[0]),
+      circle,
+      sizeof(circle) / sizeof(circle[0]),
       4));
 
   assert(lmtyn_mesh_normalize(
