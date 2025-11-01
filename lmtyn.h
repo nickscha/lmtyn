@@ -258,6 +258,14 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
 {
   u32 i, c, s, v;
   u32 bottomCenterIndex, topCenterIndex, topStart;
+  lmtyn_v3 up;
+  lmtyn_v3 center;
+  lmtyn_v3 normal;
+  lmtyn_v3 U, V;
+  lmtyn_v3 tangent;
+  f32 radius;
+  f32 angle;
+  f32 eps = 1e-6f;
 
   if (!mesh || !circles || circles_count == 0 || segments == 0)
   {
@@ -278,21 +286,62 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
 
   for (c = 0; c < circles_count; ++c)
   {
-
-    lmtyn_v3 up = {0.0f, 1.0f, 0.0f};
-    lmtyn_v3 center;
-    lmtyn_v3 normal;
-    lmtyn_v3 U, V;
-    f32 radius = circles[c].radius;
-
+    /* center and radius */
     center.x = circles[c].center_x;
     center.y = circles[c].center_y;
     center.z = circles[c].center_z;
+    radius = circles[c].radius;
 
+    /* compute tangent along path (forward/backward/central difference) */
+    if (circles_count == 1)
+    {
+      tangent.x = 0.0f;
+      tangent.y = 1.0f;
+      tangent.z = 0.0f;
+    }
+    else if (c == 0)
+    {
+      tangent.x = circles[1].center_x - circles[0].center_x;
+      tangent.y = circles[1].center_y - circles[0].center_y;
+      tangent.z = circles[1].center_z - circles[0].center_z;
+    }
+    else if (c == circles_count - 1)
+    {
+      tangent.x = circles[c].center_x - circles[c - 1].center_x;
+      tangent.y = circles[c].center_y - circles[c - 1].center_y;
+      tangent.z = circles[c].center_z - circles[c - 1].center_z;
+    }
+    else
+    {
+      tangent.x = circles[c + 1].center_x - circles[c - 1].center_x;
+      tangent.y = circles[c + 1].center_y - circles[c - 1].center_y;
+      tangent.z = circles[c + 1].center_z - circles[c - 1].center_z;
+    }
+
+    tangent = lmtyn_v3_normalize(tangent);
+
+    /* read user-provided normal */
     normal.x = circles[c].normal_x;
     normal.y = circles[c].normal_y;
     normal.z = circles[c].normal_z;
-    normal = lmtyn_v3_normalize(normal);
+
+    /* if the provided normal is (near) zero, use tangent as fallback */
+    if (lmtyn_absf(normal.x) < eps &&
+        lmtyn_absf(normal.y) < eps &&
+        lmtyn_absf(normal.z) < eps)
+    {
+      normal = tangent;
+    }
+    else
+    {
+      /* otherwise normalize user normal */
+      normal = lmtyn_v3_normalize(normal);
+    }
+
+    /* pick a stable up vector not parallel to normal */
+    up.x = 0.0f;
+    up.y = 1.0f;
+    up.z = 0.0f;
 
     if (lmtyn_absf(lmtyn_v3_dot(up, normal)) > 0.99f)
     {
@@ -301,22 +350,26 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
       up.z = 0.0f;
     }
 
+    /* compute orthonormal basis U,V from 'normal' */
     U = lmtyn_v3_normalize(lmtyn_v3_cross(up, normal));
     V = lmtyn_v3_cross(normal, U);
 
+    /* generate ring vertices */
     for (s = 0; s < segments; ++s)
     {
-      f32 angle = (2.0f * LMTYN_PI * (f32)s) / (f32)segments;
+      angle = (2.0f * LMTYN_PI * (f32)s) / (f32)segments;
 
-      lmtyn_v3 offset = lmtyn_v3_add(
-          lmtyn_v3_scale(U, lmtyn_cosf(angle) * radius),
-          lmtyn_v3_scale(V, lmtyn_sinf(angle) * radius));
+      {
+        lmtyn_v3 o1, o2, offset, final;
+        o1 = lmtyn_v3_scale(U, lmtyn_cosf(angle) * radius);
+        o2 = lmtyn_v3_scale(V, lmtyn_sinf(angle) * radius);
+        offset = lmtyn_v3_add(o1, o2);
+        final = lmtyn_v3_add(center, offset);
 
-      lmtyn_v3 final = lmtyn_v3_add(center, offset);
-
-      mesh->vertices[v++] = final.x;
-      mesh->vertices[v++] = final.y;
-      mesh->vertices[v++] = final.z;
+        mesh->vertices[v++] = final.x;
+        mesh->vertices[v++] = final.y;
+        mesh->vertices[v++] = final.z;
+      }
     }
   }
 
