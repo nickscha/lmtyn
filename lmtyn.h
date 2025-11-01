@@ -266,6 +266,26 @@ LMTYN_API LMTYN_INLINE f32 lmtyn_v3_length(lmtyn_v3 v)
   return lmtyn_sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
+LMTYN_API LMTYN_INLINE lmtyn_v3 lmtyn_v3_perpendicular(lmtyn_v3 t)
+{
+  lmtyn_v3 n;
+
+  if (lmtyn_absf(t.x) < 0.0001f && lmtyn_absf(t.z) < 0.0001f)
+  {
+    /* t is vertical */
+    n.x = 1.0f;
+    n.y = 0.0f;
+    n.z = 0.0f;
+  }
+  else
+  {
+    n.x = -t.z;
+    n.y = 0.0f;
+    n.z = t.x; /* cross with up vector */
+  }
+  return lmtyn_v3_normalize(n);
+}
+
 /* #############################################################################
  * # LMTYN Functions
  * #############################################################################
@@ -309,41 +329,46 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
 {
   u32 i, c, s, v;
   u32 bottomCenterIndex, topCenterIndex, topStart;
-  lmtyn_v3 up;
-  lmtyn_v3 center;
-  lmtyn_v3 normal;
-  lmtyn_v3 U, V;
-  lmtyn_v3 tangent;
-  f32 radius;
-  f32 angle;
-  f32 eps = 1e-6f;
+  lmtyn_v3 center, tangent, normal, prevNormal, U, V, offset;
+  f32 radius, angle, eps = 1e-6f;
 
   if (!mesh || !circles || circles_count == 0 || segments == 0)
-  {
     return 0;
-  }
 
+  /* precompute sizes */
   mesh->vertices_size = (circles_count * segments * 3) + 6;
   mesh->indices_size = (circles_count - 1) * segments * 6 + segments * 6;
 
   if (mesh->vertices_capacity < sizeof(f32) * mesh->vertices_size ||
       mesh->indices_capacity < sizeof(u32) * mesh->indices_size)
-  {
     return 0;
+
+  v = 0;
+  i = 0;
+
+  prevNormal.x = circles[0].normal_x;
+  prevNormal.y = circles[0].normal_y;
+  prevNormal.z = circles[0].normal_z;
+
+  if (lmtyn_absf(prevNormal.x) < eps &&
+      lmtyn_absf(prevNormal.y) < eps &&
+      lmtyn_absf(prevNormal.z) < eps)
+  {
+    lmtyn_v3 up = {0.0f, 1.0f, 0.0f};
+
+    prevNormal = lmtyn_v3_perpendicular(up); /* fallback */
   }
 
-  i = 0;
-  v = 0;
+  prevNormal = lmtyn_v3_normalize(prevNormal);
 
   for (c = 0; c < circles_count; ++c)
   {
-    /* center and radius */
     center.x = circles[c].center_x;
     center.y = circles[c].center_y;
     center.z = circles[c].center_z;
     radius = circles[c].radius;
 
-    /* compute tangent along path (forward/backward/central difference) */
+    /* compute tangent */
     if (circles_count == 1)
     {
       tangent.x = 0.0f;
@@ -368,63 +393,45 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
       tangent.y = circles[c + 1].center_y - circles[c - 1].center_y;
       tangent.z = circles[c + 1].center_z - circles[c - 1].center_z;
     }
-
     tangent = lmtyn_v3_normalize(tangent);
 
-    /* read user-provided normal */
-    normal.x = circles[c].normal_x;
-    normal.y = circles[c].normal_y;
-    normal.z = circles[c].normal_z;
-
-    /* if the provided normal is (near) zero, use tangent as fallback */
-    if (lmtyn_absf(normal.x) < eps &&
-        lmtyn_absf(normal.y) < eps &&
-        lmtyn_absf(normal.z) < eps)
+    /* stable rotation-minimizing frame */
+    if (c == 0)
     {
-      normal = tangent;
+      normal = lmtyn_v3_perpendicular(tangent);
     }
     else
     {
-      /* otherwise normalize user normal */
+      /* Gram-Schmidt projection to remove twist */
+      f32 dotTN = lmtyn_v3_dot(prevNormal, tangent);
+      normal.x = prevNormal.x - dotTN * tangent.x;
+      normal.y = prevNormal.y - dotTN * tangent.y;
+      normal.z = prevNormal.z - dotTN * tangent.z;
       normal = lmtyn_v3_normalize(normal);
     }
 
-    /* pick a stable up vector not parallel to normal */
-    up.x = 0.0f;
-    up.y = 1.0f;
-    up.z = 0.0f;
+    prevNormal = normal;
 
-    if (lmtyn_absf(lmtyn_v3_dot(up, normal)) > 0.99f)
-    {
-      up.x = 1.0f;
-      up.y = 0.0f;
-      up.z = 0.0f;
-    }
-
-    /* compute orthonormal basis U,V from 'normal' */
-    U = lmtyn_v3_normalize(lmtyn_v3_cross(up, normal));
-    V = lmtyn_v3_cross(normal, U);
+    /* orthonormal basis */
+    U = lmtyn_v3_cross(normal, tangent);
+    V = lmtyn_v3_cross(tangent, U);
 
     /* generate ring vertices */
     for (s = 0; s < segments; ++s)
     {
       angle = (2.0f * LMTYN_PI * (f32)s) / (f32)segments;
+      offset = lmtyn_v3_add(
+          lmtyn_v3_scale(U, lmtyn_cosf(angle) * radius),
+          lmtyn_v3_scale(V, lmtyn_sinf(angle) * radius));
+      offset = lmtyn_v3_add(center, offset);
 
-      {
-        lmtyn_v3 o1, o2, offset, final;
-        o1 = lmtyn_v3_scale(U, lmtyn_cosf(angle) * radius);
-        o2 = lmtyn_v3_scale(V, lmtyn_sinf(angle) * radius);
-        offset = lmtyn_v3_add(o1, o2);
-        final = lmtyn_v3_add(center, offset);
-
-        mesh->vertices[v++] = final.x;
-        mesh->vertices[v++] = final.y;
-        mesh->vertices[v++] = final.z;
-      }
+      mesh->vertices[v++] = offset.x;
+      mesh->vertices[v++] = offset.y;
+      mesh->vertices[v++] = offset.z;
     }
   }
 
-  /* Add center vertices for caps */
+  /* center vertices for caps */
   bottomCenterIndex = v / 3;
   mesh->vertices[v++] = circles[0].center_x;
   mesh->vertices[v++] = circles[0].center_y;
@@ -435,7 +442,7 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
   mesh->vertices[v++] = circles[circles_count - 1].center_y;
   mesh->vertices[v++] = circles[circles_count - 1].center_z;
 
-  /* Sides */
+  /* sides */
   for (c = 0; c < circles_count - 1; ++c)
   {
     for (s = 0; s < segments; ++s)
@@ -455,31 +462,25 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     }
   }
 
-  /* Bottom cap */
+  /* bottom cap */
   for (s = 0; s < segments; ++s)
   {
     u32 next = (s + 1) % segments;
-
     mesh->indices[i++] = bottomCenterIndex;
     mesh->indices[i++] = winding_cw ? next : s;
     mesh->indices[i++] = winding_cw ? s : next;
   }
 
-  /* Top cap */
+  /* top cap */
   topStart = (circles_count - 1) * segments;
-
   for (s = 0; s < segments; ++s)
   {
     u32 next = (s + 1) % segments;
-
     mesh->indices[i++] = topCenterIndex;
     mesh->indices[i++] = winding_cw ? topStart + s : topStart + next;
     mesh->indices[i++] = winding_cw ? topStart + next : topStart + s;
   }
 
-  /* If there is a mismatch between pre-calculated vertices/indices
-     and the generated amount of vertices and indices fail
-   */
   return v == mesh->vertices_size && i == mesh->indices_size;
 }
 

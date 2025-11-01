@@ -68,12 +68,13 @@ int main(void)
    * #############################################################################
    */
   lmtyn_shape_circle pillar[] = {
-      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* bottom    */
-      {0.0f, 1.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* low mid   */
-      {0.0f, 2.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}, /* center    */
-      {0.0f, 3.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* upper mid */
-      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* top low   */
-      {0.0f, 4.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}  /* top       */
+      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* base */
+      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* move up */
+      {1.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* slightly to right */
+      {3.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+      {5.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+      {6.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+      {6.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
   };
 
   lmtyn_mesh mesh = {0};
@@ -146,6 +147,24 @@ int main(void)
         csr_save_ppm("test_%05d.ppm", frame, &ctx);
       }
     }
+  }
+
+  {
+    u32 i;
+
+    for (i = 0; i < mesh.vertices_size; ++i)
+    {
+      printf("%f, ", (double)mesh.vertices[i]);
+    }
+
+    printf("\n\n");
+
+    for (i = 0; i < mesh.indices_size; ++i)
+    {
+      printf("%d, ", mesh.indices[i]);
+    }
+
+    printf("\n\n");
   }
 
   printf("[lmtyn] vertices_size: %u\n", mesh.vertices_size);
