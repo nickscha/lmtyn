@@ -84,9 +84,55 @@ LMTYN_API LMTYN_INLINE f32 lmtyn_sqrtf(f32 x)
   return (x * lmtyn_invsqrt(x));
 }
 
+LMTYN_API LMTYN_INLINE f32 lmtyn_acosf(f32 x)
+{
+  int negate;
+  f32 ret;
+  f32 inv_sqrt;
+
+  /* Clamp input to domain */
+  if (x >= 1.0f)
+  {
+    return 0.0f;
+  }
+  if (x <= -1.0f)
+  {
+    return 3.14159265f;
+  }
+
+  negate = x < 0.0f ? 1 : 0;
+  x = x < 0.0f ? -x : x;
+
+  /* Polynomial approximation for acos in range [0, 1) */
+  ret = -0.0187293f;
+  ret = ret * x + 0.0742610f;
+  ret = ret * x - 0.2121144f;
+  ret = ret * x + 1.5707288f;
+
+  inv_sqrt = lmtyn_invsqrt(1.0f - x);
+  ret *= inv_sqrt;
+
+  return (negate ? 3.14159265f - ret : ret);
+}
+
 LMTYN_API LMTYN_INLINE f32 lmtyn_absf(f32 x)
 {
   return (x < 0.0f ? -x : x);
+}
+
+LMTYN_API LMTYN_INLINE f32 lmtyn_clampf(f32 x, f32 min, f32 max)
+{
+  if (x < min)
+  {
+    return min;
+  }
+
+  if (x > max)
+  {
+    return max;
+  }
+
+  return x;
 }
 
 #define LMTYN_LUT_SIZE 256
@@ -213,6 +259,11 @@ LMTYN_API LMTYN_INLINE lmtyn_v3 lmtyn_v3_normalize(lmtyn_v3 v)
   v.z /= len;
 
   return v;
+}
+
+LMTYN_API LMTYN_INLINE f32 lmtyn_v3_length(lmtyn_v3 v)
+{
+  return lmtyn_sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
 /* #############################################################################
