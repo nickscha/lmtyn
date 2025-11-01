@@ -329,11 +329,14 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
 {
   u32 i, c, s, v;
   u32 bottomCenterIndex, topCenterIndex, topStart;
-  lmtyn_v3 center, tangent, normal, prevNormal, U, V, offset;
-  f32 radius, angle, eps = 1e-6f;
+  lmtyn_v3 center, tangent, normal, prevNormal, U, V;
+  f32 radius, eps = 1e-6f;
+  lmtyn_v3 up = {0.0f, 1.0f, 0.0f};
 
   if (!mesh || !circles || circles_count == 0 || segments == 0)
+  {
     return 0;
+  }
 
   /* precompute sizes */
   mesh->vertices_size = (circles_count * segments * 3) + 6;
@@ -341,7 +344,9 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
 
   if (mesh->vertices_capacity < sizeof(f32) * mesh->vertices_size ||
       mesh->indices_capacity < sizeof(u32) * mesh->indices_size)
+  {
     return 0;
+  }
 
   v = 0;
   i = 0;
@@ -354,8 +359,6 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
       lmtyn_absf(prevNormal.y) < eps &&
       lmtyn_absf(prevNormal.z) < eps)
   {
-    lmtyn_v3 up = {0.0f, 1.0f, 0.0f};
-
     prevNormal = lmtyn_v3_perpendicular(up); /* fallback */
   }
 
@@ -371,9 +374,7 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     /* compute tangent */
     if (circles_count == 1)
     {
-      tangent.x = 0.0f;
-      tangent.y = 1.0f;
-      tangent.z = 0.0f;
+      tangent = up;
     }
     else if (c == 0)
     {
@@ -393,6 +394,7 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
       tangent.y = circles[c + 1].center_y - circles[c - 1].center_y;
       tangent.z = circles[c + 1].center_z - circles[c - 1].center_z;
     }
+
     tangent = lmtyn_v3_normalize(tangent);
 
     /* stable rotation-minimizing frame */
@@ -404,6 +406,7 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     {
       /* Gram-Schmidt projection to remove twist */
       f32 dotTN = lmtyn_v3_dot(prevNormal, tangent);
+
       normal.x = prevNormal.x - dotTN * tangent.x;
       normal.y = prevNormal.y - dotTN * tangent.y;
       normal.z = prevNormal.z - dotTN * tangent.z;
@@ -419,10 +422,12 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
     /* generate ring vertices */
     for (s = 0; s < segments; ++s)
     {
-      angle = (2.0f * LMTYN_PI * (f32)s) / (f32)segments;
-      offset = lmtyn_v3_add(
+      f32 angle = (2.0f * LMTYN_PI * (f32)s) / (f32)segments;
+
+      lmtyn_v3 offset = lmtyn_v3_add(
           lmtyn_v3_scale(U, lmtyn_cosf(angle) * radius),
           lmtyn_v3_scale(V, lmtyn_sinf(angle) * radius));
+
       offset = lmtyn_v3_add(center, offset);
 
       mesh->vertices[v++] = offset.x;
@@ -433,11 +438,13 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
 
   /* center vertices for caps */
   bottomCenterIndex = v / 3;
+
   mesh->vertices[v++] = circles[0].center_x;
   mesh->vertices[v++] = circles[0].center_y;
   mesh->vertices[v++] = circles[0].center_z;
 
   topCenterIndex = v / 3;
+
   mesh->vertices[v++] = circles[circles_count - 1].center_x;
   mesh->vertices[v++] = circles[circles_count - 1].center_y;
   mesh->vertices[v++] = circles[circles_count - 1].center_z;
