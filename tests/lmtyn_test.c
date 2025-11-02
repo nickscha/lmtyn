@@ -183,7 +183,7 @@ int main(void)
   lmtyn_create_mesh(&mesh_circle, circle, sizeof(circle) / sizeof(circle[0]), 4);
   lmtyn_create_mesh(&mesh_lamp, lamp, sizeof(lamp) / sizeof(lamp[0]), 12);
   lmtyn_create_mesh(&mesh_pipe, pipe, sizeof(pipe) / sizeof(pipe[0]), 16);
-  lmtyn_create_mesh(&mesh_tower, tower, sizeof(tower) / sizeof(tower[0]), 4);
+  lmtyn_create_mesh(&mesh_tower, tower, sizeof(tower) / sizeof(tower[0]), 8);
 
   /* #############################################################################
    * # Render to PPM Frames

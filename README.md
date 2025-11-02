@@ -1,6 +1,10 @@
 # lmtyn
 A C89 standard compliant, single header, nostdlib (no C Standard Library) Lucid Modelling Tool You Need (LMTYN).
 
+<p align="center">
+<a href="https://github.com/nickscha/lmtyn"><img src="assets/lmtyn.gif"></a>
+</p>
+
 For more information please look at the "lmtyn.h" file or take a look at the "examples" or "tests" folder.
 
 > [!WARNING]
@@ -36,16 +40,14 @@ Download or clone lmtyn.h and include it in your project.
 #include "lmtyn.h" /* Lucid Modelling Tool You Need */
 
 int main() {
-    /* (1) Define a shape (center pos, radius, normal/direction) 
-           Note: The normals are calculated automatically
-    */
+    /* (1) Define a shape (center pos, radius) */
     lmtyn_shape_circle pillar[] = {
-      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* bottom    */
-      {0.0f, 1.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* low mid   */
-      {0.0f, 2.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}, /* center    */
-      {0.0f, 3.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* upper mid */
-      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* top low   */
-      {0.0f, 4.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}  /* top       */
+      {0.0f, 0.0f, 0.0f, 1.0f}, /* bottom    */
+      {0.0f, 1.0f, 0.0f, 0.6f}, /* low mid   */
+      {0.0f, 2.0f, 0.0f, 0.5f}, /* center    */
+      {0.0f, 3.0f, 0.0f, 0.6f}, /* upper mid */
+      {0.0f, 4.0f, 0.0f, 1.0f}, /* top low   */
+      {0.0f, 4.5f, 0.0f, 0.5f}  /* top       */
     };
 
     /* (2) Allocate enough space for vertices and indices buffer */
