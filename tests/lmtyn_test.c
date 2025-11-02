@@ -64,7 +64,7 @@ static u8 csr_init(csr_context *ctx, u32 width, u32 height)
 static void csr_render_mesh(csr_context *ctx, lmtyn_mesh *mesh, v3 cam_position, v3 model_position, u32 frame)
 {
   v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
-  v3 cam_look_at_pos = vm_v3(0.0f, 0.0f, 0.0f);
+  v3 cam_look_at_pos = vm_v3(0.0f, 0.5f, 0.0f);
   float cam_fov = 90.0f;
 
   m4x4 projection = vm_m4x4_perspective(vm_radf(cam_fov), (f32)ctx->width / (f32)ctx->height, 0.1f, 1000.0f);
@@ -114,43 +114,76 @@ int main(void)
    * #############################################################################
    */
   lmtyn_shape_circle arc[] = {
-      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* base */
-      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* move up */
-      {1.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* slightly to right */
-      {3.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-      {5.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-      {6.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-      {6.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+      {0.0f, 0.0f, 0.0f, 1.0f}, /* base */
+      {0.0f, 4.0f, 0.0f, 1.0f}, /* move up */
+      {1.0f, 5.0f, 0.0f, 1.0f}, /* slightly to right */
+      {3.0f, 5.0f, 0.0f, 1.0f},
+      {5.0f, 5.0f, 0.0f, 1.0f},
+      {6.0f, 4.0f, 0.0f, 1.0f},
+      {6.0f, 0.0f, 0.0f, 1.0f},
   };
 
   lmtyn_shape_circle pillar[] = {
-      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* bottom    */
-      {0.0f, 1.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* low mid   */
-      {0.0f, 2.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}, /* center    */
-      {0.0f, 3.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* upper mid */
-      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* top low   */
-      {0.0f, 4.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}  /* top       */
+      {0.0f, 0.0f, 0.0f, 1.0f}, /* bottom    */
+      {0.0f, 1.0f, 0.0f, 0.6f}, /* low mid   */
+      {0.0f, 2.0f, 0.0f, 0.5f}, /* center    */
+      {0.0f, 3.0f, 0.0f, 0.6f}, /* upper mid */
+      {0.0f, 4.0f, 0.0f, 1.0f}, /* top low   */
+      {0.0f, 4.5f, 0.0f, 0.5f}  /* top       */
   };
 
   lmtyn_shape_circle circle[] = {
-      {1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0},
-      {0.707f, 0.707f, 0.0f, 0.3f, 0, 0, 0},
-      {0.0f, 1.0f, 0.0f, 0.3f, 0, 0, 0},
-      {-0.707f, 0.707f, 0.0f, 0.3f, 0, 0, 0},
-      {-1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0},
-      {-0.707f, -0.707f, 0.0f, 0.3f, 0, 0, 0},
-      {0.0f, -1.0f, 0.0f, 0.3f, 0, 0, 0},
-      {0.707f, -0.707f, 0.0f, 0.3f, 0, 0, 0},
-      {1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0} /* Repeat first circle */
+      {1.0f, 0.0f, 0.0f, 0.3f},
+      {0.707f, 0.707f, 0.0f, 0.3f},
+      {0.0f, 1.0f, 0.0f, 0.3f},
+      {-0.707f, 0.707f, 0.0f, 0.3f},
+      {-1.0f, 0.0f, 0.0f, 0.3f},
+      {-0.707f, -0.707f, 0.0f, 0.3f},
+      {0.0f, -1.0f, 0.0f, 0.3f},
+      {0.707f, -0.707f, 0.0f, 0.3f},
+      {1.0f, 0.0f, 0.0f, 0.3f} /* Repeat first circle */
+  };
+
+  lmtyn_shape_circle lamp[] = {
+      {0.0f, 0.0f, 0.0f, 1.25f},
+      {0.0f, 1.0f, 0.0f, 1.25f},
+      {0.0f, 2.0f, 0.0f, 0.5f},
+      {0.0f, 4.0f, 0.0f, 0.25f},
+      {0.0f, 6.0f, 0.0f, 0.1f},
+      {0.0f, 6.5f, 0.0f, 1.5f},
+      {0.0f, 7.5f, 0.0f, 0.5f},
+  };
+
+  lmtyn_shape_circle pipe[] = {
+      {0.0f, 0.0f, 0.0f, 0.3f},
+      {1.0f, 0.0f, 0.0f, 0.3f},
+      {2.0f, 1.0f, 0.0f, 0.3f},
+      {2.5f, 1.0f, 0.0f, 0.3f}};
+
+  lmtyn_shape_circle tower[] = {
+      {0.0f, 0.0f, 0.0f, 1.5f},
+      {0.0f, 0.5f, 0.0f, 1.5f},
+      {0.0f, 0.5f, 0.0f, 0.5f},
+      {0.0f, 5.0f, 0.0f, 0.5f},
+      {0.0f, 6.0f, 0.0f, 1.5f},
+      {0.0f, 7.0f, 0.0f, 2.0f},
+      {0.0f, 7.0f, 0.0f, 1.0f},
+      {0.0f, 8.0f, 0.0f, 0.1f}
   };
 
   lmtyn_mesh mesh_arc = {0};
   lmtyn_mesh mesh_pillar = {0};
   lmtyn_mesh mesh_circle = {0};
+  lmtyn_mesh mesh_lamp = {0};
+  lmtyn_mesh mesh_pipe = {0};
+  lmtyn_mesh mesh_tower = {0};
 
   lmtyn_create_mesh(&mesh_arc, arc, sizeof(arc) / sizeof(arc[0]), 4);
   lmtyn_create_mesh(&mesh_pillar, pillar, sizeof(pillar) / sizeof(pillar[0]), 8);
   lmtyn_create_mesh(&mesh_circle, circle, sizeof(circle) / sizeof(circle[0]), 4);
+  lmtyn_create_mesh(&mesh_lamp, lamp, sizeof(lamp) / sizeof(lamp[0]), 12);
+  lmtyn_create_mesh(&mesh_pipe, pipe, sizeof(pipe) / sizeof(pipe[0]), 16);
+  lmtyn_create_mesh(&mesh_tower, tower, sizeof(tower) / sizeof(tower[0]), 4);
 
   /* #############################################################################
    * # Render to PPM Frames
@@ -161,7 +194,7 @@ int main(void)
     csr_context ctx = {0};
 
     u32 frame;
-    v3 cam_position = vm_v3(0.0f, 0.6f, 1.1f);
+    v3 cam_position = vm_v3(0.0f, 0.6f, 1.4f);
 
     assert(csr_init(&ctx, 600, 400));
 
@@ -171,6 +204,9 @@ int main(void)
       csr_render_mesh(&ctx, &mesh_arc, cam_position, vm_v3(-1.0f, 0.0f, 0.0f), frame);
       csr_render_mesh(&ctx, &mesh_pillar, cam_position, vm_v3_zero, frame);
       csr_render_mesh(&ctx, &mesh_circle, cam_position, vm_v3(1.0f, 0.0f, 0.0f), frame);
+      csr_render_mesh(&ctx, &mesh_lamp, cam_position, vm_v3(-1.0f, 1.0f, 0.0f), frame);
+      csr_render_mesh(&ctx, &mesh_pipe, cam_position, vm_v3(0.0f, 1.0f, 0.0f), frame);
+      csr_render_mesh(&ctx, &mesh_tower, cam_position, vm_v3(1.0f, 1.0f, 0.0f), frame);
       csr_save_ppm("test_%05d.ppm", (int)frame, &ctx);
     }
   }

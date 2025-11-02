@@ -300,11 +300,6 @@ typedef struct lmtyn_shape_circle
 
   f32 radius;
 
-  /* The orientation of the circle */
-  f32 normal_x;
-  f32 normal_y;
-  f32 normal_z;
-
 } lmtyn_shape_circle;
 
 typedef struct lmtyn_mesh
@@ -330,7 +325,7 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
   u32 i, c, s, v;
   u32 bottomCenterIndex, topCenterIndex, topStart;
   lmtyn_v3 center, tangent, normal, prevNormal, U, V;
-  f32 radius, eps = 1e-6f;
+  f32 radius;
   lmtyn_v3 up = {0.0f, 1.0f, 0.0f};
   u8 is_closed;
   u32 circleCountWrapped;
@@ -366,17 +361,7 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_mesh_generate(
   v = 0;
   i = 0;
 
-  prevNormal.x = circles[0].normal_x;
-  prevNormal.y = circles[0].normal_y;
-  prevNormal.z = circles[0].normal_z;
-
-  if (lmtyn_absf(prevNormal.x) < eps &&
-      lmtyn_absf(prevNormal.y) < eps &&
-      lmtyn_absf(prevNormal.z) < eps)
-  {
-    prevNormal = lmtyn_v3_perpendicular(up); /* fallback */
-  }
-
+  prevNormal = lmtyn_v3_perpendicular(up); /* fallback */
   prevNormal = lmtyn_v3_normalize(prevNormal);
 
   for (c = 0; c < circles_count; ++c)
