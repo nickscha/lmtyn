@@ -61,36 +61,50 @@ static u8 csr_init(csr_context *ctx, u32 width, u32 height)
   return 1;
 }
 
-lmtyn_shape_circle pillar[] = {
-    {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* bottom    */
-    {0.0f, 1.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* low mid   */
-    {0.0f, 2.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}, /* center    */
-    {0.0f, 3.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* upper mid */
-    {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* top low   */
-    {0.0f, 4.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}  /* top       */
-};
+static void csr_render_mesh(csr_context *ctx, lmtyn_mesh *mesh, v3 cam_position, v3 model_position, u32 frame)
+{
+  v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
+  v3 cam_look_at_pos = vm_v3(0.0f, 0.0f, 0.0f);
+  float cam_fov = 90.0f;
 
-lmtyn_shape_circle arc[] = {
-    {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* base */
-    {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* move up */
-    {1.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* slightly to right */
-    {3.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-    {5.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-    {6.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-    {6.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
-};
+  m4x4 projection = vm_m4x4_perspective(vm_radf(cam_fov), (f32)ctx->width / (f32)ctx->height, 0.1f, 1000.0f);
+  m4x4 view = vm_m4x4_lookAt(cam_position, cam_look_at_pos, world_up);
+  m4x4 projection_view = vm_m4x4_mul(projection, view);
 
-lmtyn_shape_circle circle[] = {
-    {1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0},
-    {0.707f, 0.707f, 0.0f, 0.3f, 0, 0, 0},
-    {0.0f, 1.0f, 0.0f, 0.3f, 0, 0, 0},
-    {-0.707f, 0.707f, 0.0f, 0.3f, 0, 0, 0},
-    {-1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0},
-    {-0.707f, -0.707f, 0.0f, 0.3f, 0, 0, 0},
-    {0.0f, -1.0f, 0.0f, 0.3f, 0, 0, 0},
-    {0.707f, -0.707f, 0.0f, 0.3f, 0, 0, 0},
-    {1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0} /* Repeat first circle */
-};
+  m4x4 model_base = vm_m4x4_translate(vm_m4x4_identity, model_position);
+  v3 model_rotation_x = vm_v3(1.0f, 0.0f, 0.0);
+  v3 model_rotation_y = vm_v3(0.0f, 1.0f, 0.0);
+
+  /* Rotate the cube around the model_rotation axis */
+  m4x4 model_view_projection = vm_m4x4_mul(
+      projection_view,
+      frame == 0 ? model_base : vm_m4x4_rotate(model_base, vm_radf(5.0f * (float)(frame + 1)), (frame / 100) % 2 == 0 ? model_rotation_x : model_rotation_y));
+
+  /* Render cube */
+  csr_render(
+      ctx,
+      (frame / 50) % 2 == 0
+          ? CSR_RENDER_WIREFRAME
+          : CSR_RENDER_SOLID,
+      CSR_CULLING_CCW_BACKFACE, 3,
+      mesh->vertices, mesh->vertices_size,
+      (int *)mesh->indices, mesh->indices_size,
+      model_view_projection.e);
+}
+
+#define NUM_VERTICES 512
+#define NUM_INDICES 512
+
+static void lmtyn_create_mesh(lmtyn_mesh *mesh, lmtyn_shape_circle *circles, u32 circles_count, u32 segments)
+{
+  mesh->vertices_capacity = sizeof(f32) * NUM_VERTICES;
+  mesh->indices_capacity = sizeof(u32) * NUM_INDICES;
+  mesh->vertices = malloc(sizeof(f32) * mesh->vertices_capacity);
+  mesh->indices = malloc(sizeof(u32) * mesh->indices_capacity);
+
+  assert(lmtyn_mesh_generate(mesh, 0, circles, circles_count, segments));
+  assert(lmtyn_mesh_normalize(mesh, 0.0f, 0.0f, 0.0f, 1.0f));
+}
 
 int main(void)
 {
@@ -99,98 +113,68 @@ int main(void)
    * # LMTYN Usage
    * #############################################################################
    */
-  lmtyn_mesh mesh = {0};
-  mesh.vertices_capacity = sizeof(f32) * 4096;
-  mesh.indices_capacity = sizeof(u32) * 4096;
-  mesh.vertices = malloc(sizeof(f32) * mesh.vertices_capacity);
-  mesh.indices = malloc(sizeof(u32) * mesh.indices_capacity);
+  lmtyn_shape_circle arc[] = {
+      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* base */
+      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* move up */
+      {1.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* slightly to right */
+      {3.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+      {5.0f, 5.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+      {6.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+      {6.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f},
+  };
 
-  assert(lmtyn_mesh_generate(
-      &mesh,
-      0,
-      circle,
-      sizeof(circle) / sizeof(circle[0]),
-      4));
+  lmtyn_shape_circle pillar[] = {
+      {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* bottom    */
+      {0.0f, 1.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* low mid   */
+      {0.0f, 2.0f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}, /* center    */
+      {0.0f, 3.0f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f}, /* upper mid */
+      {0.0f, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f}, /* top low   */
+      {0.0f, 4.5f, 0.0f, 0.5f, 0.0f, 0.0f, 0.0f}  /* top       */
+  };
 
-  assert(lmtyn_mesh_normalize(
-      &mesh,
-      0.0f, 0.0f, 0.0f,
-      1.0f));
+  lmtyn_shape_circle circle[] = {
+      {1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0},
+      {0.707f, 0.707f, 0.0f, 0.3f, 0, 0, 0},
+      {0.0f, 1.0f, 0.0f, 0.3f, 0, 0, 0},
+      {-0.707f, 0.707f, 0.0f, 0.3f, 0, 0, 0},
+      {-1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0},
+      {-0.707f, -0.707f, 0.0f, 0.3f, 0, 0, 0},
+      {0.0f, -1.0f, 0.0f, 0.3f, 0, 0, 0},
+      {0.707f, -0.707f, 0.0f, 0.3f, 0, 0, 0},
+      {1.0f, 0.0f, 0.0f, 0.3f, 0, 0, 0} /* Repeat first circle */
+  };
+
+  lmtyn_mesh mesh_arc = {0};
+  lmtyn_mesh mesh_pillar = {0};
+  lmtyn_mesh mesh_circle = {0};
+
+  lmtyn_create_mesh(&mesh_arc, arc, sizeof(arc) / sizeof(arc[0]), 4);
+  lmtyn_create_mesh(&mesh_pillar, pillar, sizeof(pillar) / sizeof(pillar[0]), 8);
+  lmtyn_create_mesh(&mesh_circle, circle, sizeof(circle) / sizeof(circle[0]), 4);
 
   /* #############################################################################
    * # Render to PPM Frames
    * #############################################################################
    */
   {
-
     csr_color clear_color = {40, 40, 40};
     csr_context ctx = {0};
 
+    u32 frame;
+    v3 cam_position = vm_v3(0.0f, 0.6f, 1.1f);
+
     assert(csr_init(&ctx, 600, 400));
 
+    for (frame = 0; frame < 200; ++frame)
     {
-      v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
-      v3 cam_position = vm_v3(0.0f, 0.6f, 0.6f);
-      v3 cam_look_at_pos = vm_v3(0.0f, 0.0f, 0.0f);
-      float cam_fov = 90.0f;
-
-      m4x4 projection = vm_m4x4_perspective(vm_radf(cam_fov), (f32)ctx.width / (f32)ctx.height, 0.1f, 1000.0f);
-      m4x4 view = vm_m4x4_lookAt(cam_position, cam_look_at_pos, world_up);
-      m4x4 projection_view = vm_m4x4_mul(projection, view);
-
-      m4x4 model_base = vm_m4x4_translate(vm_m4x4_identity, vm_v3_zero);
-      v3 model_rotation_x = vm_v3(1.0f, 0.0f, 0.0);
-      v3 model_rotation_y = vm_v3(0.0f, 1.0f, 0.0);
-
-      int frame;
-
-      for (frame = 0; frame < 200; ++frame)
-      {
-
-        /* Rotate the cube around the model_rotation axis */
-        m4x4 model_view_projection = vm_m4x4_mul(
-            projection_view,
-            frame == 0 ? model_base : vm_m4x4_rotate(model_base, vm_radf(5.0f * (float)(frame + 1)), (frame / 100) % 2 == 0 ? model_rotation_x : model_rotation_y));
-
-        /* Clear Screen Frame and Depth Buffer */
-        csr_render_clear_screen(&ctx, clear_color);
-
-        /* Render cube */
-        csr_render(
-            &ctx,
-            (frame / 50) % 2 == 0
-                ? CSR_RENDER_WIREFRAME
-                : CSR_RENDER_SOLID,
-            CSR_CULLING_CCW_BACKFACE, 3,
-            mesh.vertices, mesh.vertices_size,
-            (int *)mesh.indices, mesh.indices_size,
-            model_view_projection.e);
-
-        csr_save_ppm("test_%05d.ppm", frame, &ctx);
-      }
+      csr_render_clear_screen(&ctx, clear_color);
+      csr_render_mesh(&ctx, &mesh_arc, cam_position, vm_v3(-1.0f, 0.0f, 0.0f), frame);
+      csr_render_mesh(&ctx, &mesh_pillar, cam_position, vm_v3_zero, frame);
+      csr_render_mesh(&ctx, &mesh_circle, cam_position, vm_v3(1.0f, 0.0f, 0.0f), frame);
+      csr_save_ppm("test_%05d.ppm", (int)frame, &ctx);
     }
   }
 
-  {
-    u32 i;
-
-    for (i = 0; i < mesh.vertices_size; ++i)
-    {
-      printf("%f, ", (double)mesh.vertices[i]);
-    }
-
-    printf("\n\n");
-
-    for (i = 0; i < mesh.indices_size; ++i)
-    {
-      printf("%d, ", mesh.indices[i]);
-    }
-
-    printf("\n\n");
-  }
-
-  printf("[lmtyn] vertices_size: %u\n", mesh.vertices_size);
-  printf("[lmtyn]  indices_size: %u\n", mesh.indices_size);
   printf("[lmtyn] finished\n");
 
   return 0;
