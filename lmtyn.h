@@ -30,12 +30,14 @@ LICENSE
 
 typedef unsigned char u8;
 typedef unsigned int u32;
+typedef int i32;
 typedef float f32;
 
 #define LMTYN_STATIC_ASSERT(c, m) typedef char lmtyn_assert_##m[(c) ? 1 : -1]
 
 LMTYN_STATIC_ASSERT(sizeof(u8) == 1, u8_size_must_be_1);
 LMTYN_STATIC_ASSERT(sizeof(u32) == 4, u32_size_must_be_4);
+LMTYN_STATIC_ASSERT(sizeof(i32) == 4, i32_size_must_be_4);
 LMTYN_STATIC_ASSERT(sizeof(f32) == 4, f32_size_must_be_4);
 
 /* #############################################################################
@@ -86,7 +88,7 @@ LMTYN_API LMTYN_INLINE f32 lmtyn_sqrtf(f32 x)
 
 LMTYN_API LMTYN_INLINE f32 lmtyn_acosf(f32 x)
 {
-  int negate;
+  i32 negate;
   f32 ret;
   f32 inv_sqrt;
 
@@ -175,9 +177,9 @@ static const f32 lmtyn_lut[LMTYN_LUT_SIZE] = {
 LMTYN_API LMTYN_INLINE f32 lmtyn_sinf(f32 x)
 {
   f32 index, frac;
-  int i, i2;
+  i32 i, i2;
 
-  x -= LMTYN_PI2 * (f32)((int)(x * (1.0f / LMTYN_PI2)));
+  x -= LMTYN_PI2 * (f32)((i32)(x * (1.0f / LMTYN_PI2)));
 
   if (x < 0)
   {
@@ -185,7 +187,7 @@ LMTYN_API LMTYN_INLINE f32 lmtyn_sinf(f32 x)
   }
 
   index = x * (LMTYN_LUT_SIZE / LMTYN_PI2);
-  i = (int)index;
+  i = (i32)index;
   frac = index - (f32)i;
 
   i &= (LMTYN_LUT_SIZE - 1);
