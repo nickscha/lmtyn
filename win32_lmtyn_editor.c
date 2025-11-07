@@ -78,8 +78,6 @@ LMTYN_API void csr_blit_scaled(csr_context *ctx, lmtyn_editor *editor)
                 break;
             }
 
-            src_y = ctx->height - 1 - src_y;
-
             if (src_x >= ctx->width)
             {
                 src_x = ctx->width - 1;
@@ -304,7 +302,6 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
     bmi.bmiHeader.biCompression = BI_RGB;
 
 #define CIRCLES_CAPACITY 1024
-
     lmtyn_shape_circle circles[CIRCLES_CAPACITY];
 
     win32_lmtyn_editor_resize_framebuffer(&editor, width, height, &bmi, &ctx);
@@ -387,17 +384,10 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
         /* Draw 3D Model */
         if (editor.circles_count > 1)
         {
-            lmtyn_shape_circle circles_flipped[CIRCLES_CAPACITY];
-            for (i32 i = 0; i < editor.circles_count; ++i)
-            {
-                circles_flipped[i] = circles[i];
-                circles_flipped[i].center_y = -circles[i].center_y;
-            }
-
             mesh.vertices_size = 0;
             mesh.indices_size = 0;
 
-            lmtyn_mesh_generate(&mesh, 0, circles_flipped, editor.circles_count, 4);
+            lmtyn_mesh_generate(&mesh, 0, circles, editor.circles_count, 4);
             lmtyn_mesh_normalize(&mesh, 0.0f, 0.0f, 0.0f, 1.0f);
 
             csr_render_clear_screen(&ctx, clear_color);

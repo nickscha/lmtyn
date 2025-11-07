@@ -547,7 +547,6 @@ LMTYN_API u8 lmtyn_editor_regions_find_selected_region_index(
     lmtyn_editor *editor,
     u32 x, u32 y)
 {
-
     u32 i;
 
     for (i = 0; i < LMYTN_EDITOR_FRAMEBUFFER_REGION_COUNT; ++i)
