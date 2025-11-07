@@ -704,19 +704,23 @@ LMTYN_API void lmtyn_editor_process_input(
             editor->snap_enabled = !editor->snap_enabled;
         }
 
-        if(input->key_r_down) {
+        if (input->key_r_down)
+        {
             u32 i;
 
             editor->circles_count = 2;
             editor->circles_selected_circle_index = 1;
             editor->grid_scale = 10.0f;
+            editor->circles[0].center_x = 0.0f;
+            editor->circles[0].center_y = 0.0f;
+            editor->circles[0].center_z = 0.0f;
+            editor->circles[0].radius = 1.0f;
 
             for (i = 0; i < LMYTN_EDITOR_FRAMEBUFFER_REGION_COUNT; ++i)
             {
                 editor->regions[i].grid_scroll_offset_x = 0.0f;
                 editor->regions[i].grid_scroll_offset_y = 0.0f;
             }
-            
         }
     }
 
