@@ -97,7 +97,7 @@ LMTYN_API void csr_blit_scaled(csr_context *ctx, lmtyn_editor *editor)
     }
 }
 
-LMTYN_API void win32_lmtyn_editor_resize_framebuffer(lmtyn_editor *editor, i32 new_w, i32 new_h, BITMAPINFO *bmi)
+LMTYN_API void win32_lmtyn_editor_resize_framebuffer(lmtyn_editor *editor, i32 new_w, i32 new_h, BITMAPINFO *bmi, csr_context *ctx)
 {
     if (new_w <= 0 || new_h <= 0)
     {
@@ -120,6 +120,22 @@ LMTYN_API void win32_lmtyn_editor_resize_framebuffer(lmtyn_editor *editor, i32 n
     editor->regions_split_y = editor->framebuffer_height / 2;
 
     lmtyn_editor_regions_update(editor);
+
+    /* CSR Render Buffer */
+    {
+        u32 memory_size;
+        void *memory;
+
+        if (ctx->framebuffer || ctx->zbuffer)
+        {
+            free(ctx->framebuffer);
+        }
+
+        memory_size = (u32)csr_memory_size((i32)new_w, (i32)new_h);
+        memory = (void *)malloc(memory_size);
+
+        csr_init_model(ctx, memory, memory_size, (i32)new_w, (i32)new_h);
+    }
 }
 
 LMTYN_API void win32_lmtyn_editor_draw_region_labels(lmtyn_editor *editor, HDC hdc)
@@ -165,6 +181,7 @@ typedef struct win32_lmtyn_editor_state
     lmtyn_editor_input *input;
     lmtyn_mesh *mesh;
     BITMAPINFO *bmi;
+    csr_context *ctx;
 
 } win32_lmtyn_editor_state;
 
@@ -187,7 +204,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         i32 new_w = LOWORD(lParam);
         i32 new_h = HIWORD(lParam);
 
-        win32_lmtyn_editor_resize_framebuffer(win32_state->editor, new_w, new_h, win32_state->bmi);
+        win32_lmtyn_editor_resize_framebuffer(win32_state->editor, new_w, new_h, win32_state->bmi, win32_state->ctx);
         win32_state->input->framebuffer_size_changed = 1;
 
         InvalidateRect(hWnd, NULL, FALSE);
@@ -273,6 +290,7 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
     u32 width = 800;
     u32 height = 800;
 
+    csr_context ctx = {0};
     lmtyn_editor editor = {0};
     lmtyn_editor_input editor_input_empty = {0};
     lmtyn_editor_input editor_input = {0};
@@ -289,7 +307,7 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
 
     lmtyn_shape_circle circles[CIRCLES_CAPACITY];
 
-    win32_lmtyn_editor_resize_framebuffer(&editor, width, height, &bmi);
+    win32_lmtyn_editor_resize_framebuffer(&editor, width, height, &bmi, &ctx);
 
     lmtyn_editor_initialize(
         &editor,
@@ -310,6 +328,7 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
     state.input = &editor_input;
     state.mesh = &mesh;
     state.bmi = &bmi;
+    state.ctx = &ctx;
 
     WNDCLASS wc;
     MSG msg;
@@ -340,13 +359,7 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
     HDC hdc = GetDC(hwnd);
 
     csr_color clear_color = {40, 40, 40};
-    csr_context ctx = {0};
     v3 cam_position = vm_v3(0.0f, 0.0f, 1.0f);
-
-    csr_init(
-        &ctx,
-        editor.regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_RENDER].w,
-        editor.regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_RENDER].h);
 
     u32 frame;
 
