@@ -304,6 +304,12 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
 #define CIRCLES_CAPACITY 1024
     lmtyn_shape_circle circles[CIRCLES_CAPACITY];
 
+    circles[0].center_x = 0.0f;
+    circles[0].center_y = 0.0f;
+    circles[0].center_z = 0.0f;
+    circles[0].radius = 1.0f;
+    editor.circles_count = 1;
+
     win32_lmtyn_editor_resize_framebuffer(&editor, width, height, &bmi, &ctx);
 
     lmtyn_editor_initialize(
@@ -352,6 +358,18 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
         0, 0,
         hInst,
         &state);
+
+    /* Center the mouse in the XY framebuffer region */
+    {
+        lmtyn_editor_framebuffer_region *xy_region = &editor.regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_XY];
+        i32 center_x = xy_region->x + (int)(xy_region->w / 2);
+        i32 center_y = xy_region->y + (int)(xy_region->h / 2);
+        POINT pt = {center_x, center_y};
+        ClientToScreen(hwnd, &pt);
+        SetCursorPos(pt.x, pt.y);
+        editor_input.mouse_x = center_x;
+        editor_input.mouse_y = center_y;
+    }
 
     HDC hdc = GetDC(hwnd);
 
