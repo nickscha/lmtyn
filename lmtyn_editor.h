@@ -668,29 +668,29 @@ LMTYN_API void lmtyn_editor_process_input(
                 if (input->key_right_down)
                     r->grid_scroll_offset_x += editor->grid_scroll_speed;
                 if (input->key_up_down)
-                    r->grid_scroll_offset_y += editor->grid_scroll_speed; // Z axis
+                    r->grid_scroll_offset_y += editor->grid_scroll_speed; /* Z axis */
                 if (input->key_down_down)
                     r->grid_scroll_offset_y -= editor->grid_scroll_speed;
                 break;
 
             case LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ:
                 if (input->key_left_down)
-                    r->grid_scroll_offset_x -= editor->grid_scroll_speed; // Y axis
+                    r->grid_scroll_offset_x -= editor->grid_scroll_speed; /* Y axis */
                 if (input->key_right_down)
                     r->grid_scroll_offset_x += editor->grid_scroll_speed;
                 if (input->key_up_down)
-                    r->grid_scroll_offset_y += editor->grid_scroll_speed; // Z axis
+                    r->grid_scroll_offset_y += editor->grid_scroll_speed; /* Z axis */
                 if (input->key_down_down)
                     r->grid_scroll_offset_y -= editor->grid_scroll_speed;
                 break;
 
             case LMTYN_EDITOR_FRAMEBUFFER_REGION_XY:
                 if (input->key_left_down)
-                    r->grid_scroll_offset_x -= editor->grid_scroll_speed; // X axis
+                    r->grid_scroll_offset_x -= editor->grid_scroll_speed; /* X axis */
                 if (input->key_right_down)
                     r->grid_scroll_offset_x += editor->grid_scroll_speed;
                 if (input->key_up_down)
-                    r->grid_scroll_offset_y += editor->grid_scroll_speed; // Y axis
+                    r->grid_scroll_offset_y += editor->grid_scroll_speed; /* Y axis */
                 if (input->key_down_down)
                     r->grid_scroll_offset_y -= editor->grid_scroll_speed;
                 break;
@@ -715,10 +715,7 @@ LMTYN_API void lmtyn_editor_process_input(
         lmtyn_editor_regions_update(editor);
     }
 
-    if (!lmtyn_editor_regions_find_selected_region_index(editor, input->mouse_x, input->mouse_y))
-    {
-        /* No region selected with mouse */
-    }
+    lmtyn_editor_regions_find_selected_region_index(editor, input->mouse_x, input->mouse_y);
 
     if (input->framebuffer_size_changed)
     {

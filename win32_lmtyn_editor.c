@@ -16,7 +16,7 @@ LMTYN_API u8 csr_init(csr_context *ctx, u32 width, u32 height)
         return 0;
     }
 
-    if (!csr_init_model(ctx, memory, memory_size, (int)width, (int)height))
+    if (!csr_init_model(ctx, memory, memory_size, (i32)width, (i32)height))
     {
         return 0;
     }
@@ -28,20 +28,14 @@ LMTYN_API void csr_render_mesh(csr_context *ctx, lmtyn_mesh *mesh, v3 cam_positi
 {
     v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
     v3 cam_look_at_pos = vm_v3(0.0f, 0.0f, 0.0f);
-    float cam_fov = 90.0f;
+    f32 cam_fov = 90.0f;
     v3 model_rotation_y = vm_v3(0.0f, 1.0f, 0.0);
 
     m4x4 projection = vm_m4x4_perspective(vm_radf(cam_fov), (f32)ctx->width / (f32)ctx->height, 0.1f, 1000.0f);
     m4x4 view = vm_m4x4_lookAt(cam_position, cam_look_at_pos, world_up);
     m4x4 projection_view = vm_m4x4_mul(projection, view);
     m4x4 model_base = vm_m4x4_translate(vm_m4x4_identity, model_position);
-
-    /* Rotate the cube around the model_rotation axis */
-    m4x4 model_view_projection = vm_m4x4_mul(
-        projection_view,
-        model_base);
-
-    /* vm_m4x4_rotate(model_base, vm_radf(2.0f * (float)(frame + 1)), model_rotation_y) */
+    m4x4 model_view_projection = vm_m4x4_mul(projection_view, model_base);
 
     /* Render cube */
     csr_render(
@@ -274,7 +268,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, int nShow)
+i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
 {
     u32 width = 800;
     u32 height = 800;
