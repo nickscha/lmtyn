@@ -703,6 +703,21 @@ LMTYN_API void lmtyn_editor_process_input(
         {
             editor->snap_enabled = !editor->snap_enabled;
         }
+
+        if(input->key_r_down) {
+            u32 i;
+
+            editor->circles_count = 2;
+            editor->circles_selected_circle_index = 1;
+            editor->grid_scale = 10.0f;
+
+            for (i = 0; i < LMYTN_EDITOR_FRAMEBUFFER_REGION_COUNT; ++i)
+            {
+                editor->regions[i].grid_scroll_offset_x = 0.0f;
+                editor->regions[i].grid_scroll_offset_y = 0.0f;
+            }
+            
+        }
     }
 
     if (input->key_plus_down || input->key_minus_down)
