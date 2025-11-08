@@ -629,7 +629,6 @@ LMTYN_API u8 lmtyn_editor_initialize(
     return 1;
 }
 
-/* Helper to update one key */
 LMTYN_API void lmtyn_editor_input_key_update(lmtyn_editor_key_state *k)
 {
     k->pressed = 0;

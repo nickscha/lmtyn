@@ -226,80 +226,59 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
 
     case WM_KEYDOWN:
-        switch (wParam)
-        {
-        case VK_CONTROL:
-            win32_state->input->key_control.down = 1;
-            break;
-        case VK_LEFT:
-            win32_state->input->key_left.down = 1;
-            break;
-        case VK_RIGHT:
-            win32_state->input->key_right.down = 1;
-            break;
-        case VK_UP:
-            win32_state->input->key_up.down = 1;
-            break;
-        case VK_DOWN:
-            win32_state->input->key_down.down = 1;
-            break;
-        case 'Z':
-            win32_state->input->key_z.down = 1;
-            break;
-        case 'R':
-            win32_state->input->key_r.down = 1;
-            break;
-        case 'S':
-            win32_state->input->key_s.down = 1;
-            break;
-        case VK_OEM_PLUS:
-        case VK_ADD:
-            win32_state->input->key_plus.down = 1;
-            break;
-        case VK_OEM_MINUS:
-        case VK_SUBTRACT:
-            win32_state->input->key_minus.down = 1;
-            break;
-        }
-        return 0;
-
     case WM_KEYUP:
+    case WM_SYSKEYDOWN:
+    case WM_SYSKEYUP:
+    {
+        u8 wasDown = (u8)((lParam & ((u32)1 << 30)) != 0);
+        u8 isDown = (u8)((lParam & ((u32)1 << 31)) == 0);
+
+        lmtyn_editor_key_state *key = NULL;
+
         switch (wParam)
         {
         case VK_CONTROL:
-            win32_state->input->key_control.down = 0;
+            key = &win32_state->input->key_control;
             break;
         case VK_LEFT:
-            win32_state->input->key_left.down = 0;
+            key = &win32_state->input->key_left;
             break;
         case VK_RIGHT:
-            win32_state->input->key_right.down = 0;
+            key = &win32_state->input->key_right;
             break;
         case VK_UP:
-            win32_state->input->key_up.down = 0;
+            key = &win32_state->input->key_up;
             break;
         case VK_DOWN:
-            win32_state->input->key_down.down = 0;
+            key = &win32_state->input->key_down;
             break;
         case 'Z':
-            win32_state->input->key_z.down = 0;
+            key = &win32_state->input->key_z;
             break;
         case 'R':
-            win32_state->input->key_r.down = 0;
+            key = &win32_state->input->key_r;
             break;
         case 'S':
-            win32_state->input->key_s.down = 0;
+            key = &win32_state->input->key_s;
             break;
         case VK_OEM_PLUS:
         case VK_ADD:
-            win32_state->input->key_plus.down = 0;
+            key = &win32_state->input->key_plus;
             break;
         case VK_OEM_MINUS:
         case VK_SUBTRACT:
-            win32_state->input->key_minus.down = 0;
+            key = &win32_state->input->key_minus;
             break;
         }
+
+        if (key)
+        {
+            key->was_down = wasDown;
+            key->down = isDown;
+        }
+
         return 0;
+    }
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
