@@ -283,25 +283,13 @@ LMTYN_API void lmtyn_editor_ui_update_slider(
     if (mouse_down && slider->header.selected)
     {
         /* Simple linear slider along X */
-        f32 rel = ((f32)(mouse_x - (region->x + slider->header.x))) / (f32)slider->header.w;
-        f32 val;
-
-        if (rel < 0.0f)
-        {
-            rel = 0.0f;
-        }
-
-        if (rel > 1.0f)
-        {
-            rel = 1.0f;
-        }
-
-        val = slider->slider_min + rel * (slider->slider_max - slider->slider_min);
+        f32 rel = lmtyn_clampf(((f32)(mouse_x - (region->x + slider->header.x))) / (f32)slider->header.w, 0.0f, 1.0f);
+        f32 val = slider->slider_min + rel * (slider->slider_max - slider->slider_min);
 
         if (editor->snap_enabled && editor->snap_interval > 0.0f)
         {
             f32 snap = editor->snap_interval;
-            val = lmtyn_snap(val, snap);
+            val = lmtyn_clampf(lmtyn_snap(val, snap), slider->slider_min, slider->slider_max);
         }
 
         slider->slider_val = val;
@@ -471,7 +459,8 @@ LMTYN_API void lmtyn_editor_draw_borders(
     u32 x;
     u32 y;
 
-    if (editor->regions_selected_region_index >= 0)
+    if (editor->regions_selected_region_index >= 0 &&
+        editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
     {
         /* Selected region */
         lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
@@ -1038,7 +1027,7 @@ LMTYN_API void lmtyn_editor_ui_update(
 
     lmtyn_editor_ui_slider radius_slider = {
         {40, 5, 100, 20, 0, 0x00202020, 0x00FFCE1B, 0x00505050, 0x00FFCE1B},
-        0.2f,
+        0.1f,
         10.0f,
         editor->circles[editor->circles_selected_circle_index].radius};
 
