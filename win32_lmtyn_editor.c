@@ -209,73 +209,97 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return 0;
     }
     case WM_LBUTTONDOWN:
-    {
-        win32_state->input->mouse_left_down = 1;
+        win32_state->input->mouse_left.down = 1;
         win32_state->input->mouse_x = LOWORD(lParam);
         win32_state->input->mouse_y = HIWORD(lParam);
-
+        SetCapture(hWnd); /* Ensures drag outside window still tracked */
         return 0;
-    }
-    case WM_MOUSEMOVE:
-    {
-        win32_state->input->mouse_x = LOWORD(lParam);
-        win32_state->input->mouse_y = HIWORD(lParam);
 
-        return 0;
-    }
     case WM_LBUTTONUP:
-
-        win32_state->input->mouse_left_down = 0;
-
+        win32_state->input->mouse_left.down = 0;
+        ReleaseCapture();
         return 0;
-    case WM_KEYDOWN:
 
+    case WM_MOUSEMOVE:
+        win32_state->input->mouse_x = LOWORD(lParam);
+        win32_state->input->mouse_y = HIWORD(lParam);
+        return 0;
+
+    case WM_KEYDOWN:
         switch (wParam)
         {
         case VK_CONTROL:
-            win32_state->input->key_control_down = 1;
+            win32_state->input->key_control.down = 1;
             break;
         case VK_LEFT:
-            win32_state->input->key_left_down = 1;
+            win32_state->input->key_left.down = 1;
             break;
         case VK_RIGHT:
-            win32_state->input->key_right_down = 1;
+            win32_state->input->key_right.down = 1;
             break;
         case VK_UP:
-            win32_state->input->key_up_down = 1;
+            win32_state->input->key_up.down = 1;
             break;
         case VK_DOWN:
-            win32_state->input->key_down_down = 1;
+            win32_state->input->key_down.down = 1;
             break;
         case 'Z':
-            win32_state->input->key_z_down = 1;
+            win32_state->input->key_z.down = 1;
             break;
         case 'R':
-            win32_state->input->key_r_down = 1;
+            win32_state->input->key_r.down = 1;
             break;
         case 'S':
-            win32_state->input->key_s_down = 1;
+            win32_state->input->key_s.down = 1;
             break;
         case VK_OEM_PLUS:
         case VK_ADD:
-            win32_state->input->key_plus_down = 1;
+            win32_state->input->key_plus.down = 1;
             break;
         case VK_OEM_MINUS:
         case VK_SUBTRACT:
-            win32_state->input->key_minus_down = 1;
+            win32_state->input->key_minus.down = 1;
             break;
         }
         return 0;
+
     case WM_KEYUP:
-    {
         switch (wParam)
         {
         case VK_CONTROL:
-            win32_state->input->key_control_down = 0;
+            win32_state->input->key_control.down = 0;
+            break;
+        case VK_LEFT:
+            win32_state->input->key_left.down = 0;
+            break;
+        case VK_RIGHT:
+            win32_state->input->key_right.down = 0;
+            break;
+        case VK_UP:
+            win32_state->input->key_up.down = 0;
+            break;
+        case VK_DOWN:
+            win32_state->input->key_down.down = 0;
+            break;
+        case 'Z':
+            win32_state->input->key_z.down = 0;
+            break;
+        case 'R':
+            win32_state->input->key_r.down = 0;
+            break;
+        case 'S':
+            win32_state->input->key_s.down = 0;
+            break;
+        case VK_OEM_PLUS:
+        case VK_ADD:
+            win32_state->input->key_plus.down = 0;
+            break;
+        case VK_OEM_MINUS:
+        case VK_SUBTRACT:
+            win32_state->input->key_minus.down = 0;
             break;
         }
         return 0;
-    }
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
@@ -290,7 +314,6 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
 
     csr_context ctx = {0};
     lmtyn_editor editor = {0};
-    lmtyn_editor_input editor_input_empty = {0};
     lmtyn_editor_input editor_input = {0};
 
     BITMAPINFO bmi;
@@ -392,12 +415,6 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
         }
 
         lmtyn_editor_render(&editor, &editor_input);
-
-        editor_input_empty.framebuffer_size_changed = editor_input.framebuffer_size_changed;
-        editor_input_empty.mouse_x = editor_input.mouse_x;
-        editor_input_empty.mouse_y = editor_input.mouse_y;
-        editor_input_empty.key_control_down = editor_input.key_control_down;
-        editor_input = editor_input_empty; /* Reset Input */
 
         /* Draw 3D Model */
         if (editor.circles_count > 1)

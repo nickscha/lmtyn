@@ -69,23 +69,34 @@ typedef struct lmtyn_editor
 
 } lmtyn_editor;
 
+typedef struct lmtyn_editor_key_state
+{
+
+    u8 down;     /* Is currently held down */
+    u8 pressed;  /* Became pressed this frame (edge trigger) */
+    u8 active;   /* Toggle state (flips when pressed) */
+    u8 was_down; /* Previous frame’s state */
+
+} lmtyn_editor_key_state;
+
 typedef struct lmtyn_editor_input
 {
     u8 framebuffer_size_changed;
 
-    u8 key_control_down;
-    u8 key_left_down;
-    u8 key_right_down;
-    u8 key_up_down;
-    u8 key_down_down;
-    u8 key_z_down;
-    u8 key_r_down;
-    u8 key_s_down;
-    u8 key_plus_down;
-    u8 key_minus_down;
+    lmtyn_editor_key_state key_control;
+    lmtyn_editor_key_state key_left;
+    lmtyn_editor_key_state key_right;
+    lmtyn_editor_key_state key_up;
+    lmtyn_editor_key_state key_down;
+    lmtyn_editor_key_state key_z;
+    lmtyn_editor_key_state key_r;
+    lmtyn_editor_key_state key_s;
+    lmtyn_editor_key_state key_plus;
+    lmtyn_editor_key_state key_minus;
 
-    u8 mouse_left_down;
-    u8 mouse_right_down;
+    lmtyn_editor_key_state mouse_left;
+    lmtyn_editor_key_state mouse_right;
+
     u32 mouse_x;
     u32 mouse_y;
 
@@ -618,35 +629,67 @@ LMTYN_API u8 lmtyn_editor_initialize(
     return 1;
 }
 
+/* Helper to update one key */
+LMTYN_API void lmtyn_editor_input_key_update(lmtyn_editor_key_state *k)
+{
+    k->pressed = 0;
+
+    /* Edge detect: just pressed this frame */
+    if (k->down && !k->was_down)
+    {
+        k->pressed = 1;
+        k->active = !k->active; /* Toggle active state */
+    }
+
+    k->was_down = k->down;
+}
+
+LMTYN_API void lmtyn_editor_input_keys_update(lmtyn_editor_input *in)
+{
+    lmtyn_editor_input_key_update(&in->key_control);
+    lmtyn_editor_input_key_update(&in->key_left);
+    lmtyn_editor_input_key_update(&in->key_right);
+    lmtyn_editor_input_key_update(&in->key_up);
+    lmtyn_editor_input_key_update(&in->key_down);
+    lmtyn_editor_input_key_update(&in->key_z);
+    lmtyn_editor_input_key_update(&in->key_r);
+    lmtyn_editor_input_key_update(&in->key_s);
+    lmtyn_editor_input_key_update(&in->key_plus);
+    lmtyn_editor_input_key_update(&in->key_minus);
+    lmtyn_editor_input_key_update(&in->mouse_left);
+    lmtyn_editor_input_key_update(&in->mouse_right);
+}
+
 static u8 initialized;
 
-LMTYN_API void lmtyn_editor_process_input(
+LMTYN_API void lmtyn_editor_input_update(
     lmtyn_editor *editor,
     lmtyn_editor_input *input)
 {
+    lmtyn_editor_input_keys_update(input);
 
-    if (input->key_control_down)
+    if (input->key_control.down)
     {
         u32 size_min = editor->regions_split_size_min;
         u32 size_factor = editor->regions_split_size_factor;
 
-        if (input->key_left_down && editor->regions_split_x > size_min)
+        if (input->key_left.pressed && editor->regions_split_x > size_min)
         {
             editor->regions_split_x -= size_factor;
         }
-        if (input->key_right_down && editor->regions_split_x < editor->framebuffer_width - size_min)
+        if (input->key_right.pressed && editor->regions_split_x < editor->framebuffer_width - size_min)
         {
             editor->regions_split_x += size_factor;
         }
-        if (input->key_up_down && editor->regions_split_y > size_min)
+        if (input->key_up.pressed && editor->regions_split_y > size_min)
         {
             editor->regions_split_y -= size_factor;
         }
-        if (input->key_down_down && editor->regions_split_y < editor->framebuffer_height - size_min)
+        if (input->key_down.pressed && editor->regions_split_y < editor->framebuffer_height - size_min)
         {
             editor->regions_split_y += size_factor;
         }
-        if (input->key_z_down && editor->circles_count > 0)
+        if (input->key_z.pressed && editor->circles_count > 0)
         {
             editor->circles_count--;
         }
@@ -662,35 +705,35 @@ LMTYN_API void lmtyn_editor_process_input(
             switch (editor->regions_selected_region_index)
             {
             case LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ:
-                if (input->key_left_down)
+                if (input->key_left.pressed)
                     r->grid_scroll_offset_x -= editor->grid_scroll_speed;
-                if (input->key_right_down)
+                if (input->key_right.pressed)
                     r->grid_scroll_offset_x += editor->grid_scroll_speed;
-                if (input->key_up_down)
+                if (input->key_up.pressed)
                     r->grid_scroll_offset_y += editor->grid_scroll_speed; /* Z axis */
-                if (input->key_down_down)
+                if (input->key_down.pressed)
                     r->grid_scroll_offset_y -= editor->grid_scroll_speed;
                 break;
 
             case LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ:
-                if (input->key_left_down)
+                if (input->key_left.pressed)
                     r->grid_scroll_offset_x -= editor->grid_scroll_speed; /* Y axis */
-                if (input->key_right_down)
+                if (input->key_right.pressed)
                     r->grid_scroll_offset_x += editor->grid_scroll_speed;
-                if (input->key_up_down)
+                if (input->key_up.pressed)
                     r->grid_scroll_offset_y += editor->grid_scroll_speed; /* Z axis */
-                if (input->key_down_down)
+                if (input->key_down.pressed)
                     r->grid_scroll_offset_y -= editor->grid_scroll_speed;
                 break;
 
             case LMTYN_EDITOR_FRAMEBUFFER_REGION_XY:
-                if (input->key_left_down)
+                if (input->key_left.pressed)
                     r->grid_scroll_offset_x -= editor->grid_scroll_speed; /* X axis */
-                if (input->key_right_down)
+                if (input->key_right.pressed)
                     r->grid_scroll_offset_x += editor->grid_scroll_speed;
-                if (input->key_up_down)
+                if (input->key_up.pressed)
                     r->grid_scroll_offset_y += editor->grid_scroll_speed; /* Y axis */
-                if (input->key_down_down)
+                if (input->key_down.pressed)
                     r->grid_scroll_offset_y -= editor->grid_scroll_speed;
                 break;
 
@@ -699,12 +742,12 @@ LMTYN_API void lmtyn_editor_process_input(
             }
         }
 
-        if (input->key_s_down)
+        if (input->key_s.pressed)
         {
             editor->snap_enabled = !editor->snap_enabled;
         }
 
-        if (input->key_r_down)
+        if (input->key_r.pressed)
         {
             u32 i;
 
@@ -724,9 +767,9 @@ LMTYN_API void lmtyn_editor_process_input(
         }
     }
 
-    if (input->key_plus_down || input->key_minus_down)
+    if (input->key_plus.pressed || input->key_minus.pressed)
     {
-        f32 grid_scale_factor = input->key_plus_down ? 0.9f : 1.1f;
+        f32 grid_scale_factor = input->key_plus.pressed ? 0.9f : 1.1f;
 
         editor->grid_scale *= grid_scale_factor;
 
@@ -791,7 +834,7 @@ LMTYN_API void lmtyn_editor_process_input(
                 circle->center_z = editor->circles_last_z;
             }
 
-            if (input->mouse_left_down)
+            if (input->mouse_left.pressed)
             {
                 editor->circles_last_x = circle->center_x;
                 editor->circles_last_y = circle->center_y;
@@ -812,7 +855,7 @@ LMTYN_API void lmtyn_editor_render(
     lmtyn_editor *editor,
     lmtyn_editor_input *input)
 {
-    lmtyn_editor_process_input(editor, input);
+    lmtyn_editor_input_update(editor, input);
 
     lmtyn_editor_draw_background(editor, LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ);
     lmtyn_editor_draw_background(editor, LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ);
