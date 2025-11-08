@@ -49,7 +49,7 @@ LMTYN_API void csr_render_mesh(csr_context *ctx, lmtyn_mesh *mesh, v3 cam_positi
 
 LMTYN_API void csr_blit_scaled(csr_context *ctx, lmtyn_editor *editor)
 {
-    lmtyn_editor_framebuffer_region *r = &editor->regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_RENDER];
+    lmtyn_editor_region *r = &editor->regions[LMTYN_EDITOR_REGION_RENDER];
 
     u32 y;
     u32 x;
@@ -143,26 +143,26 @@ LMTYN_API void win32_lmtyn_editor_draw_region_labels(lmtyn_editor *editor, HDC h
     SetTextColor(hdc, RGB(255, 255, 255));
     SetBkMode(hdc, TRANSPARENT);
 
-    for (i = 0; i < LMYTN_EDITOR_FRAMEBUFFER_REGION_COUNT - 1; ++i)
+    for (i = 0; i < LMTYN_EDITOR_REGION_COUNT - 1; ++i)
     {
-        lmtyn_editor_framebuffer_region *region = &editor->regions[i];
+        lmtyn_editor_region *region = &editor->regions[i];
 
         char *axis_up;
         char *axis_right;
 
-        if (i == LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ)
+        if (i == LMTYN_EDITOR_REGION_XZ)
         {
             axis_up = "Z";
             axis_right = "X";
         }
 
-        if (i == LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ)
+        if (i == LMTYN_EDITOR_REGION_YZ)
         {
             axis_up = "Z";
             axis_right = "Y";
         }
 
-        if (i == LMTYN_EDITOR_FRAMEBUFFER_REGION_XY)
+        if (i == LMTYN_EDITOR_REGION_XY)
         {
             axis_up = "Y";
             axis_right = "X";
@@ -363,7 +363,7 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
 
     /* Center the mouse in the XY framebuffer region */
     {
-        lmtyn_editor_framebuffer_region *xy_region = &editor.regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_XY];
+        lmtyn_editor_region *xy_region = &editor.regions[LMTYN_EDITOR_REGION_XY];
         i32 center_x = xy_region->x + (int)(xy_region->w / 2);
         i32 center_y = xy_region->y + (int)(xy_region->h / 2);
         POINT pt = {center_x, center_y};

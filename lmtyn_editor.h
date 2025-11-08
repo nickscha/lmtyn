@@ -3,17 +3,18 @@
 
 #include "lmtyn.h"
 
-typedef enum lmtyn_editor_framebuffer_regions
+typedef enum lmtyn_editor_regions
 {
-    LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ = 0,
-    LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ = 1,
-    LMTYN_EDITOR_FRAMEBUFFER_REGION_XY = 2,
-    LMTYN_EDITOR_FRAMEBUFFER_REGION_RENDER = 3,
-    LMYTN_EDITOR_FRAMEBUFFER_REGION_COUNT = 4
+    LMTYN_EDITOR_REGION_XZ = 0,
+    LMTYN_EDITOR_REGION_YZ,
+    LMTYN_EDITOR_REGION_XY,
+    LMTYN_EDITOR_REGION_RENDER,
+    LMTYN_EDITOR_REGION_TOOLBAR,
+    LMTYN_EDITOR_REGION_COUNT
 
-} lmtyn_editor_framebuffer_regions;
+} lmtyn_editor_regions;
 
-typedef struct lmtyn_editor_framebuffer_region
+typedef struct lmtyn_editor_region
 {
     u32 x;
     u32 y;
@@ -25,7 +26,7 @@ typedef struct lmtyn_editor_framebuffer_region
     f32 grid_scroll_offset_x;
     f32 grid_scroll_offset_y;
 
-} lmtyn_editor_framebuffer_region;
+} lmtyn_editor_region;
 
 typedef struct lmtyn_editor
 {
@@ -33,7 +34,7 @@ typedef struct lmtyn_editor
     u32 framebuffer_width;
     u32 framebuffer_height;
 
-    lmtyn_editor_framebuffer_region regions[LMYTN_EDITOR_FRAMEBUFFER_REGION_COUNT];
+    lmtyn_editor_region regions[LMTYN_EDITOR_REGION_COUNT];
     i32 regions_selected_region_index;
 
     /* Horizontal and vertical dividers of the regions */
@@ -135,13 +136,13 @@ LMTYN_API void lmtyn_editor_screen_to_world(
     u32 region_index,
     u32 sx, u32 sy, f32 *wx, f32 *wy)
 {
-    lmtyn_editor_framebuffer_region *r = &editor->regions[region_index];
+    lmtyn_editor_region *r = &editor->regions[region_index];
 
     /* Normalize screen coordinates to [-1, 1] */
     f32 nx = ((sx - r->x) / (f32)r->w - 0.5f) * 2.0f;
     f32 ny = ((sy - r->y) / (f32)r->h - 0.5f) * 2.0f;
 
-    if (region_index == LMTYN_EDITOR_FRAMEBUFFER_REGION_XY)
+    if (region_index == LMTYN_EDITOR_REGION_XY)
     {
         ny = -ny;
     }
@@ -156,14 +157,14 @@ LMTYN_API void lmtyn_editor_world_to_screen(
     u32 region_index,
     f32 wx, f32 wy, u32 *sx, u32 *sy)
 {
-    lmtyn_editor_framebuffer_region *r = &editor->regions[region_index];
+    lmtyn_editor_region *r = &editor->regions[region_index];
 
     /* Normalize to [-1, 1] */
     f32 nx = (wx - r->grid_scroll_offset_x) / editor->grid_scale;
     f32 ny = (wy - r->grid_scroll_offset_y) / editor->grid_scale;
 
     /* Y positive world is negative in screen space */
-    if (region_index == LMTYN_EDITOR_FRAMEBUFFER_REGION_XY)
+    if (region_index == LMTYN_EDITOR_REGION_XY)
     {
         ny = -ny;
     }
@@ -185,7 +186,7 @@ LMTYN_API void lmtyn_editor_draw_circle(
     i32 radius,
     u32 color)
 {
-    lmtyn_editor_framebuffer_region *r = &editor->regions[region_index];
+    lmtyn_editor_region *r = &editor->regions[region_index];
 
     u32 fb_w = editor->framebuffer_width;
     u32 fb_h = editor->framebuffer_height;
@@ -238,7 +239,7 @@ LMTYN_API void lmtyn_editor_draw_background(
     lmtyn_editor *editor,
     u32 region_index)
 {
-    lmtyn_editor_framebuffer_region *r = &editor->regions[region_index];
+    lmtyn_editor_region *r = &editor->regions[region_index];
 
     u32 x;
     u32 y;
@@ -263,7 +264,7 @@ LMTYN_API void lmtyn_editor_draw_borders(
     if (editor->regions_selected_region_index >= 0)
     {
         /* Selected region */
-        lmtyn_editor_framebuffer_region *r = &editor->regions[editor->regions_selected_region_index];
+        lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
 
         /* Top & Bottom edges */
         for (x = r->x; x < r->x + r->w; ++x)
@@ -303,7 +304,7 @@ LMTYN_API void lmtyn_editor_draw_grid(
     lmtyn_editor *editor,
     u32 region_index)
 {
-    lmtyn_editor_framebuffer_region *r = &editor->regions[region_index];
+    lmtyn_editor_region *r = &editor->regions[region_index];
     u32 fb_w = editor->framebuffer_width;
     u32 fb_h = editor->framebuffer_height;
 
@@ -388,9 +389,9 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
     u32 i;
     u32 c;
 
-    for (i = 0; i < LMYTN_EDITOR_FRAMEBUFFER_REGION_COUNT - 1; ++i)
+    for (i = 0; i < LMTYN_EDITOR_REGION_COUNT - 1; ++i)
     {
-        lmtyn_editor_framebuffer_region *r = &editor->regions[i];
+        lmtyn_editor_region *r = &editor->regions[i];
 
         for (c = 0; c < editor->circles_count; ++c)
         {
@@ -407,7 +408,7 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
             u32 py;
             u32 pr;
 
-            if (i == LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ)
+            if (i == LMTYN_EDITOR_REGION_XZ)
             {
                 a = circle->center_x;
                 b = circle->center_z;
@@ -418,7 +419,7 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
                     b_prev = circle_prev->center_z;
                 }
             }
-            else if (i == LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ)
+            else if (i == LMTYN_EDITOR_REGION_YZ)
             {
                 a = circle->center_y;
                 b = circle->center_z;
@@ -429,7 +430,7 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
                     b_prev = circle_prev->center_z;
                 }
             }
-            else if (i == LMTYN_EDITOR_FRAMEBUFFER_REGION_XY)
+            else if (i == LMTYN_EDITOR_REGION_XY)
             {
                 a = circle->center_x;
                 b = circle->center_y;
@@ -459,10 +460,10 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
 LMTYN_API void lmtyn_editor_regions_update(
     lmtyn_editor *editor)
 {
-    lmtyn_editor_framebuffer_region *r_xz = &editor->regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ];
-    lmtyn_editor_framebuffer_region *r_yz = &editor->regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ];
-    lmtyn_editor_framebuffer_region *r_xy = &editor->regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_XY];
-    lmtyn_editor_framebuffer_region *r_render = &editor->regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_RENDER];
+    lmtyn_editor_region *r_xz = &editor->regions[LMTYN_EDITOR_REGION_XZ];
+    lmtyn_editor_region *r_yz = &editor->regions[LMTYN_EDITOR_REGION_YZ];
+    lmtyn_editor_region *r_xy = &editor->regions[LMTYN_EDITOR_REGION_XY];
+    lmtyn_editor_region *r_render = &editor->regions[LMTYN_EDITOR_REGION_RENDER];
 
     r_xz->x = 0;
     r_xz->y = 0;
@@ -491,9 +492,9 @@ LMTYN_API u8 lmtyn_editor_regions_find_selected_region_index(
 {
     u32 i;
 
-    for (i = 0; i < LMYTN_EDITOR_FRAMEBUFFER_REGION_COUNT; ++i)
+    for (i = 0; i < LMTYN_EDITOR_REGION_COUNT; ++i)
     {
-        lmtyn_editor_framebuffer_region *region = &editor->regions[i];
+        lmtyn_editor_region *region = &editor->regions[i];
 
         if (x >= region->x &&
             y >= region->y &&
@@ -533,10 +534,10 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->grid_color = 0x20404040;
     editor->grid_color_axis = 0x00666666;
 
-    editor->regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ].color_background = 0x00202040;
-    editor->regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ].color_background = 0x00204020;
-    editor->regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_XY].color_background = 0x00402020;
-    editor->regions[LMTYN_EDITOR_FRAMEBUFFER_REGION_RENDER].color_background = 0x00303030;
+    editor->regions[LMTYN_EDITOR_REGION_XZ].color_background = 0x00202040;
+    editor->regions[LMTYN_EDITOR_REGION_YZ].color_background = 0x00204020;
+    editor->regions[LMTYN_EDITOR_REGION_XY].color_background = 0x00402020;
+    editor->regions[LMTYN_EDITOR_REGION_RENDER].color_background = 0x00303030;
 
     editor->regions_selected_region_index = -1;
     editor->regions_split_x = editor->framebuffer_width / 2;
@@ -630,11 +631,11 @@ LMTYN_API void lmtyn_editor_input_update(
     {
         if (editor->regions_selected_region_index >= 0)
         {
-            lmtyn_editor_framebuffer_region *r = &editor->regions[editor->regions_selected_region_index];
+            lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
 
             switch (editor->regions_selected_region_index)
             {
-            case LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ:
+            case LMTYN_EDITOR_REGION_XZ:
                 if (input->key_left.pressed)
                     r->grid_scroll_offset_x -= editor->grid_scroll_speed;
                 if (input->key_right.pressed)
@@ -645,7 +646,7 @@ LMTYN_API void lmtyn_editor_input_update(
                     r->grid_scroll_offset_y -= editor->grid_scroll_speed;
                 break;
 
-            case LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ:
+            case LMTYN_EDITOR_REGION_YZ:
                 if (input->key_left.pressed)
                     r->grid_scroll_offset_x -= editor->grid_scroll_speed; /* Y axis */
                 if (input->key_right.pressed)
@@ -656,7 +657,7 @@ LMTYN_API void lmtyn_editor_input_update(
                     r->grid_scroll_offset_y -= editor->grid_scroll_speed;
                 break;
 
-            case LMTYN_EDITOR_FRAMEBUFFER_REGION_XY:
+            case LMTYN_EDITOR_REGION_XY:
                 if (input->key_left.pressed)
                     r->grid_scroll_offset_x -= editor->grid_scroll_speed; /* X axis */
                 if (input->key_right.pressed)
@@ -689,7 +690,7 @@ LMTYN_API void lmtyn_editor_input_update(
             editor->circles[0].center_z = 0.0f;
             editor->circles[0].radius = 1.0f;
 
-            for (i = 0; i < LMYTN_EDITOR_FRAMEBUFFER_REGION_COUNT; ++i)
+            for (i = 0; i < LMTYN_EDITOR_REGION_COUNT; ++i)
             {
                 editor->regions[i].grid_scroll_offset_x = 0.0f;
                 editor->regions[i].grid_scroll_offset_y = 0.0f;
@@ -724,9 +725,9 @@ LMTYN_API void lmtyn_editor_input_update(
             initialized = 1;
         }
 
-        if (editor->regions_selected_region_index >= 0 && editor->regions_selected_region_index != LMTYN_EDITOR_FRAMEBUFFER_REGION_RENDER)
+        if (editor->regions_selected_region_index >= 0 && editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER)
         {
-            lmtyn_editor_framebuffer_region *r = &editor->regions[editor->regions_selected_region_index];
+            lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
 
             f32 wx, wy;
             lmtyn_editor_screen_to_world(editor, editor->regions_selected_region_index, input->mouse_x, input->mouse_y, &wx, &wy);
@@ -745,19 +746,19 @@ LMTYN_API void lmtyn_editor_input_update(
 
             circle->radius = current_circle_index > 0 ? editor->circles[current_circle_index - 1].radius : 1.0f;
 
-            if (editor->regions_selected_region_index == LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ)
+            if (editor->regions_selected_region_index == LMTYN_EDITOR_REGION_XZ)
             {
                 circle->center_x = wx;
                 circle->center_z = wy;
                 circle->center_y = editor->circles_last_y;
             }
-            else if (editor->regions_selected_region_index == LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ)
+            else if (editor->regions_selected_region_index == LMTYN_EDITOR_REGION_YZ)
             {
                 circle->center_y = wx;
                 circle->center_z = wy;
                 circle->center_x = editor->circles_last_x;
             }
-            else if (editor->regions_selected_region_index == LMTYN_EDITOR_FRAMEBUFFER_REGION_XY)
+            else if (editor->regions_selected_region_index == LMTYN_EDITOR_REGION_XY)
             {
                 circle->center_x = wx;
                 circle->center_y = wy;
@@ -787,14 +788,14 @@ LMTYN_API void lmtyn_editor_render(
 {
     lmtyn_editor_input_update(editor, input);
 
-    lmtyn_editor_draw_background(editor, LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ);
-    lmtyn_editor_draw_background(editor, LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ);
-    lmtyn_editor_draw_background(editor, LMTYN_EDITOR_FRAMEBUFFER_REGION_XY);
-    lmtyn_editor_draw_background(editor, LMTYN_EDITOR_FRAMEBUFFER_REGION_RENDER);
+    lmtyn_editor_draw_background(editor, LMTYN_EDITOR_REGION_XZ);
+    lmtyn_editor_draw_background(editor, LMTYN_EDITOR_REGION_YZ);
+    lmtyn_editor_draw_background(editor, LMTYN_EDITOR_REGION_XY);
+    lmtyn_editor_draw_background(editor, LMTYN_EDITOR_REGION_RENDER);
 
-    lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_FRAMEBUFFER_REGION_XZ);
-    lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_FRAMEBUFFER_REGION_YZ);
-    lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_FRAMEBUFFER_REGION_XY);
+    lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_REGION_XZ);
+    lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_REGION_YZ);
+    lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_REGION_XY);
 
     lmtyn_editor_draw_borders(editor);
 
