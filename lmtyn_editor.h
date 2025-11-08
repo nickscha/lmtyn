@@ -177,63 +177,6 @@ LMTYN_API void lmtyn_editor_world_to_screen(
     *sy = r->y + (u32)(ny * r->h);
 }
 
-LMTYN_API void lmtyn_editor_draw_line(
-    lmtyn_editor *editor,
-    u32 region_index,
-    u32 x0, u32 y0,
-    u32 x1, u32 y1,
-    u32 color)
-{
-    lmtyn_editor_framebuffer_region *r = &editor->regions[region_index];
-
-    u32 fb_w = editor->framebuffer_width;
-    u32 fb_h = editor->framebuffer_height;
-
-    int dx = lmtyn_absi(x1 - x0);
-    int sx = x0 < x1 ? 1 : -1;
-    int dy = lmtyn_absi(y1 - y0);
-    int sy = y0 < y1 ? 1 : -1;
-
-    int err = dx + dy;
-
-    while (1)
-    {
-        int e2;
-
-        if (x0 >= r->x && x0 < r->x + r->w &&
-            y0 >= r->y && y0 < r->y + r->h &&
-            x0 >= 0 && x0 < fb_w &&
-            y0 >= 0 && y0 < fb_h)
-        {
-            editor->framebuffer[y0 * editor->framebuffer_width + x0] = color;
-        }
-
-        if (x0 == x1 && y0 == y1)
-        {
-            break;
-        }
-
-        e2 = 2 * err;
-
-        if (e2 >= dy)
-        {
-            err += dy;
-            x0 += sx;
-        }
-
-        if (e2 <= dx)
-        {
-            err += dx;
-            y0 += sy;
-        }
-
-        if (x0 < 0 || x0 >= fb_w || y0 < 0 || y0 >= fb_h)
-        {
-            break;
-        }
-    }
-}
-
 LMTYN_API void lmtyn_editor_draw_circle(
     lmtyn_editor *editor,
     u32 region_index,
@@ -502,19 +445,7 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
 
             pr = (u32)(circle->radius * (r->w / (2.0f * editor->grid_scale)));
 
-            /* TODO: fix wrong line drawing
-            if (circle_prev)
-            {
-                u32 px_prev;
-                u32 py_prev;
-
-                lmtyn_editor_world_to_screen(editor, i, a_prev, b_prev, &px_prev, &py_prev);
-
-                lmtyn_editor_draw_line(
-                    editor, i, px_prev, py_prev, px, py,
-                    editor->circles_color_line);
-            }
-            */
+            /* TODO: draw line between current and previous circle using circle_prev */
 
             lmtyn_editor_draw_circle(
                 editor, i, px, py, pr,
