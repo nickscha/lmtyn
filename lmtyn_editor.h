@@ -958,7 +958,7 @@ LMTYN_API void lmtyn_editor_input_update(
         }
 
         if (editor->regions_selected_region_index >= 0 &&
-            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER && 
+            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER &&
             editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
         {
             lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
@@ -1016,6 +1016,42 @@ LMTYN_API void lmtyn_editor_input_update(
     }
 }
 
+LMTYN_API void lmtyn_editor_ui_update(
+    lmtyn_editor *editor,
+    lmtyn_editor_input *input)
+{
+    lmtyn_editor_region *toolbar = &editor->regions[LMTYN_EDITOR_REGION_TOOLBAR];
+
+    lmtyn_editor_ui_button snap_button = {
+        {10, 5, 20, 20, 0, 0x00303030, 0x00FFFFFF, 0x00505050, 0x00FFCE1B},
+        editor->snap_enabled,
+        0x000b6f3a,
+        0x00ee4224};
+
+    lmtyn_editor_ui_update_button(
+        editor, toolbar, &snap_button,
+        input->mouse_x, input->mouse_y,
+        input->mouse_left.pressed);
+
+    editor->snap_enabled = snap_button.active;
+    lmtyn_editor_ui_draw_button(editor, toolbar, &snap_button);
+
+    lmtyn_editor_ui_slider radius_slider = {
+        {40, 5, 100, 20, 0, 0x00202020, 0x00FFCE1B, 0x00505050, 0x00FFCE1B},
+        0.2f,
+        10.0f,
+        editor->circles[editor->circles_selected_circle_index].radius};
+
+    lmtyn_editor_ui_update_slider(
+        editor, toolbar, &radius_slider,
+        input->mouse_x, input->mouse_y,
+        input->mouse_left.down);
+
+    editor->circles[editor->circles_selected_circle_index].radius = radius_slider.slider_val;
+
+    lmtyn_editor_ui_draw_slider(editor, toolbar, &radius_slider);
+}
+
 LMTYN_API void lmtyn_editor_render(
     lmtyn_editor *editor,
     lmtyn_editor_input *input)
@@ -1036,38 +1072,7 @@ LMTYN_API void lmtyn_editor_render(
 
     lmtyn_editor_draw_circles(editor);
 
-    /* UI elements */
-    {
-        lmtyn_editor_region *toolbar = &editor->regions[LMTYN_EDITOR_REGION_TOOLBAR];
-
-        lmtyn_editor_ui_button snap_button = {
-            {10, 5, 20, 20, 0, 0x00303030, 0x00FFFFFF, 0x00505050, 0x00FFCE1B},
-            editor->snap_enabled,
-            0x000b6f3a,
-            0x00ee4224};
-
-        lmtyn_editor_ui_update_button(
-            editor, toolbar, &snap_button,
-            input->mouse_x, input->mouse_y,
-            input->mouse_left.pressed);
-
-        editor->snap_enabled = snap_button.active;
-        lmtyn_editor_ui_draw_button(editor, toolbar, &snap_button);
-
-        lmtyn_editor_ui_slider radius_slider = {
-            {40, 5, 100, 20, 0, 0x00202020, 0x00FFCE1B, 0x00505050, 0x00FFCE1B},
-            0.2f,
-            10.0f,
-            editor->circles[editor->circles_selected_circle_index].radius};
-
-        lmtyn_editor_ui_update_slider(editor, toolbar, &radius_slider,
-                                      input->mouse_x, input->mouse_y,
-                                      input->mouse_left.down);
-
-        editor->circles[editor->circles_selected_circle_index].radius = radius_slider.slider_val;
-
-        lmtyn_editor_ui_draw_slider(editor, toolbar, &radius_slider);
-    }
+    lmtyn_editor_ui_update(editor, input);
 }
 
 #endif /* LMTYN_EDITOR_H */
