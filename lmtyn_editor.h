@@ -3,15 +3,38 @@
 
 #include "lmtyn.h"
 
+/* contains some general fields relevant for all ui elements */
+typedef struct lmtyn_editor_ui_header
+{
+
+    i32 x, y;                  /* offset position */
+    u32 w, h;                  /* width / height  */
+    u8 selected;               /* is the mouse/etc currently on this ui element */
+    u32 color_background;      /* the default background color */
+    u32 color_foreground;      /* the default foreground color */
+    u32 color_border;          /* the border color when not selected */
+    u32 color_border_selected; /* the vorder color when selected */
+
+} lmtyn_editor_ui_header;
+
 typedef struct lmtyn_editor_ui_button_on_off
 {
-    i32 x, y;
-    u32 w, h;
-    u8 active;
-    u32 color_on;
-    u32 color_off;
+    lmtyn_editor_ui_header header;
+    u8 active;     /* Button specific field */
+    u32 color_on;  /* Button specific field */
+    u32 color_off; /* Button specific field */
 
-} lmtyn_editor_ui_button_on_off;
+} lmtyn_editor_ui_button;
+
+typedef struct lmtyn_editor_ui_slider
+{
+
+    lmtyn_editor_ui_header header;
+    f32 slider_min;
+    f32 slider_max;
+    f32 slider_val;
+
+} lmtyn_editor_ui_slider;
 
 typedef enum lmtyn_editor_regions
 {
@@ -141,6 +164,183 @@ LMTYN_API LMTYN_INLINE f32 lmtyn_snap(f32 v, f32 interval)
     return lmtyn_roundf(v / interval) * interval;
 }
 
+LMTYN_API void lmtyn_editor_ui_clamp_to_region(lmtyn_editor_region *r, i32 *x, i32 *y, u32 *w, u32 *h)
+{
+    if (*x < (i32)r->x)
+    {
+        *w -= (r->x - *x);
+        *x = r->x;
+    }
+
+    if (*y < (i32)r->y)
+    {
+        *h -= (r->y - *y);
+        *y = r->y;
+    }
+
+    if (*x + (i32)*w > (i32)(r->x + r->w))
+    {
+        *w = r->x + r->w - *x;
+    }
+
+    if (*y + (i32)*h > (i32)(r->y + r->h))
+    {
+        *h = r->y + r->h - *y;
+    }
+}
+
+LMTYN_API u8 lmtyn_editor_ui_is_mouse_inside(
+    lmtyn_editor_region *region,
+    lmtyn_editor_ui_header *h,
+    u32 mouse_x, u32 mouse_y)
+{
+    i32 abs_x = region->x + h->x;
+    i32 abs_y = region->y + h->y;
+
+    return (mouse_x >= (u32)abs_x && mouse_x < (u32)(abs_x + h->w) &&
+            mouse_y >= (u32)abs_y && mouse_y < (u32)(abs_y + h->h));
+}
+
+LMTYN_API void lmtyn_editor_ui_draw_box(
+    lmtyn_editor *editor,
+    lmtyn_editor_region *region,
+    lmtyn_editor_ui_header *h,
+    u32 fill_color)
+{
+    i32 bx = region->x + h->x;
+    i32 by = region->y + h->y;
+    u32 bw = h->w;
+    u32 bh = h->h;
+
+    i32 x, y;
+
+    lmtyn_editor_ui_clamp_to_region(region, &bx, &by, &bw, &bh);
+
+    if (bw == 0 || bh == 0)
+    {
+        return;
+    }
+
+    u32 border = h->selected ? h->color_border_selected : h->color_border;
+
+    for (y = 0; y < (i32)bh; ++y)
+    {
+        u32 *row = editor->framebuffer + (by + y) * editor->framebuffer_width + bx;
+
+        for (x = 0; x < (i32)bw; ++x)
+        {
+            if (x == 0 || y == 0 || x == (i32)(bw - 1) || y == (i32)(bh - 1))
+            {
+                row[x] = border;
+            }
+            else
+            {
+                row[x] = fill_color;
+            }
+        }
+    }
+}
+
+LMTYN_API void lmtyn_editor_ui_update_common(
+    lmtyn_editor_ui_header *h,
+    lmtyn_editor_region *region,
+    u32 mouse_x, u32 mouse_y)
+{
+    h->selected = lmtyn_editor_ui_is_mouse_inside(region, h, mouse_x, mouse_y);
+}
+
+LMTYN_API void lmtyn_editor_ui_update_button(
+    lmtyn_editor *editor,
+    lmtyn_editor_region *region,
+    lmtyn_editor_ui_button *button,
+    u32 mouse_x, u32 mouse_y, u8 mouse_pressed)
+{
+    lmtyn_editor_ui_update_common(&button->header, region, mouse_x, mouse_y);
+
+    if (button->header.selected && mouse_pressed)
+    {
+        button->active = !button->active;
+    }
+}
+
+LMTYN_API void lmtyn_editor_ui_draw_button(
+    lmtyn_editor *editor,
+    lmtyn_editor_region *region,
+    lmtyn_editor_ui_button *button)
+{
+    u32 fill = button->active ? button->color_on : button->color_off;
+    lmtyn_editor_ui_draw_box(editor, region, &button->header, fill);
+}
+
+LMTYN_API void lmtyn_editor_ui_update_slider(
+    lmtyn_editor *editor,
+    lmtyn_editor_region *region,
+    lmtyn_editor_ui_slider *slider,
+    u32 mouse_x, u32 mouse_y, u8 mouse_down)
+{
+    lmtyn_editor_ui_update_common(&slider->header, region, mouse_x, mouse_y);
+
+    if (mouse_down && slider->header.selected)
+    {
+        /* Simple linear slider along X */
+        f32 rel = ((f32)(mouse_x - (region->x + slider->header.x))) / (f32)slider->header.w;
+        f32 val;
+
+        if (rel < 0.0f)
+        {
+            rel = 0.0f;
+        }
+
+        if (rel > 1.0f)
+        {
+            rel = 1.0f;
+        }
+
+        val = slider->slider_min + rel * (slider->slider_max - slider->slider_min);
+
+        if (editor->snap_enabled && editor->snap_interval > 0.0f)
+        {
+            f32 snap = editor->snap_interval;
+            val = lmtyn_snap(val, snap);
+        }
+
+        slider->slider_val = val;
+    }
+}
+
+void lmtyn_editor_ui_draw_slider(
+    lmtyn_editor *editor,
+    lmtyn_editor_region *region,
+    lmtyn_editor_ui_slider *slider)
+{
+    /* Draw track */
+    lmtyn_editor_ui_draw_box(editor, region, &slider->header, slider->header.color_background);
+
+    /* Draw handle */
+    i32 bx = region->x + slider->header.x;
+    i32 by = region->y + slider->header.y;
+    u32 bw = slider->header.w;
+    u32 bh = slider->header.h;
+
+    f32 rel = (slider->slider_val - slider->slider_min) /
+              (slider->slider_max - slider->slider_min);
+
+    i32 handle_x = bx + (i32)(rel * (bw - 6)); /* 6px wide handle */
+
+    i32 x, y;
+
+    for (y = by + 2; y < (i32)(by + bh - 2); ++y)
+    {
+        for (x = handle_x; x < handle_x + 6; ++x)
+        {
+            if (x >= bx && x < (i32)(bx + bw))
+            {
+                editor->framebuffer[y * editor->framebuffer_width + x] = slider->header.color_foreground;
+            }
+        }
+    }
+}
+
 LMTYN_API void lmtyn_editor_screen_to_world(
     lmtyn_editor *editor,
     u32 region_index,
@@ -186,39 +386,6 @@ LMTYN_API void lmtyn_editor_world_to_screen(
     /* Convert to pixel coordinates */
     *sx = r->x + (u32)(nx * r->w);
     *sy = r->y + (u32)(ny * r->h);
-}
-
-LMTYN_API void lmtyn_editor_draw_button(lmtyn_editor *editor, lmtyn_editor_ui_button_on_off *btn)
-{
-    u32 x, y;
-    u32 color = btn->active ? btn->color_on : btn->color_off;
-
-    for (y = 0; y < btn->h; ++y)
-    {
-        if ((i32)y + btn->y >= (i32)editor->framebuffer_height)
-            break;
-
-        u32 *row = editor->framebuffer + (y + btn->y) * editor->framebuffer_width + btn->x;
-
-        for (x = 0; x < btn->w; ++x)
-        {
-            if ((i32)x + btn->x >= (i32)editor->framebuffer_width)
-                break;
-            row[x] = color;
-        }
-    }
-}
-
-LMTYN_API void lmtyn_editor_button_handle_click(lmtyn_editor_ui_button_on_off *btn, u32 mouse_x, u32 mouse_y, u8 mouse_pressed)
-{
-    if (!mouse_pressed)
-        return;
-
-    if (mouse_x >= (u32)btn->x && mouse_x < (u32)(btn->x + btn->w) &&
-        mouse_y >= (u32)btn->y && mouse_y < (u32)(btn->y + btn->h))
-    {
-        btn->active = !btn->active; /* toggle state */
-    }
 }
 
 LMTYN_API void lmtyn_editor_draw_circle(
@@ -790,7 +957,9 @@ LMTYN_API void lmtyn_editor_input_update(
             initialized = 1;
         }
 
-        if (editor->regions_selected_region_index >= 0 && editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER)
+        if (editor->regions_selected_region_index >= 0 &&
+            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER && 
+            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
         {
             lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
 
@@ -869,15 +1038,35 @@ LMTYN_API void lmtyn_editor_render(
 
     /* UI elements */
     {
-        lmtyn_editor_ui_button_on_off snap_toggle = {
-            10, editor->framebuffer_height - editor->regions_toolbar_size_y + 5,
-            20, 20,
-            editor->snap_enabled,
-            0x000b6f3a, 0x00ee4224};
+        lmtyn_editor_region *toolbar = &editor->regions[LMTYN_EDITOR_REGION_TOOLBAR];
 
-        lmtyn_editor_button_handle_click(&snap_toggle, input->mouse_x, input->mouse_y, input->mouse_left.pressed);
-        editor->snap_enabled = snap_toggle.active;
-        lmtyn_editor_draw_button(editor, &snap_toggle);
+        lmtyn_editor_ui_button snap_button = {
+            {10, 5, 20, 20, 0, 0x00303030, 0x00FFFFFF, 0x00505050, 0x00FFCE1B},
+            editor->snap_enabled,
+            0x000b6f3a,
+            0x00ee4224};
+
+        lmtyn_editor_ui_update_button(
+            editor, toolbar, &snap_button,
+            input->mouse_x, input->mouse_y,
+            input->mouse_left.pressed);
+
+        editor->snap_enabled = snap_button.active;
+        lmtyn_editor_ui_draw_button(editor, toolbar, &snap_button);
+
+        lmtyn_editor_ui_slider radius_slider = {
+            {40, 5, 100, 20, 0, 0x00202020, 0x00FFCE1B, 0x00505050, 0x00FFCE1B},
+            0.2f,
+            10.0f,
+            editor->circles[editor->circles_selected_circle_index].radius};
+
+        lmtyn_editor_ui_update_slider(editor, toolbar, &radius_slider,
+                                      input->mouse_x, input->mouse_y,
+                                      input->mouse_left.down);
+
+        editor->circles[editor->circles_selected_circle_index].radius = radius_slider.slider_val;
+
+        lmtyn_editor_ui_draw_slider(editor, toolbar, &radius_slider);
     }
 }
 
