@@ -289,7 +289,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
 {
     u32 width = 800;
-    u32 height = 800;
+    u32 height = 830;
 
     csr_context ctx = {0};
     lmtyn_editor editor = {0};
