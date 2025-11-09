@@ -137,6 +137,10 @@ typedef struct lmtyn_editor_input
 
 } lmtyn_editor_input;
 
+/* #############################################################################
+ * # [SECTION] Math
+ * #############################################################################
+ */
 LMTYN_API LMTYN_INLINE u32 lmtyn_absi(u32 x)
 {
     return (x < 0 ? -x : x);
@@ -165,6 +169,10 @@ LMTYN_API LMTYN_INLINE f32 lmtyn_snap(f32 v, f32 interval)
     return lmtyn_roundf(v / interval) * interval;
 }
 
+/* #############################################################################
+ * # [SECTION] User Interface
+ * #############################################################################
+ */
 LMTYN_API void lmtyn_editor_ui_clamp_to_region(lmtyn_editor_region *r, i32 *x, i32 *y, u32 *w, u32 *h)
 {
     if (*x < (i32)r->x)
@@ -214,6 +222,7 @@ LMTYN_API void lmtyn_editor_ui_draw_box(
     u32 bh = h->h;
 
     i32 x, y;
+    u32 border;
 
     lmtyn_editor_ui_clamp_to_region(region, &bx, &by, &bw, &bh);
 
@@ -222,7 +231,7 @@ LMTYN_API void lmtyn_editor_ui_draw_box(
         return;
     }
 
-    u32 border = h->selected ? h->color_border_selected : h->color_border;
+    border = h->selected ? h->color_border_selected : h->color_border;
 
     for (y = 0; y < (i32)bh; ++y)
     {
@@ -302,9 +311,6 @@ void lmtyn_editor_ui_draw_slider(
     lmtyn_editor_region *region,
     lmtyn_editor_ui_slider *slider)
 {
-    /* Draw track */
-    lmtyn_editor_ui_draw_box(editor, region, &slider->header, slider->header.color_background);
-
     /* Draw handle */
     i32 bx = region->x + slider->header.x;
     i32 by = region->y + slider->header.y;
@@ -318,6 +324,9 @@ void lmtyn_editor_ui_draw_slider(
 
     i32 x, y;
 
+    /* Draw track */
+    lmtyn_editor_ui_draw_box(editor, region, &slider->header, slider->header.color_background);
+
     for (y = by + 2; y < (i32)(by + bh - 2); ++y)
     {
         for (x = handle_x; x < handle_x + 6; ++x)
@@ -330,6 +339,10 @@ void lmtyn_editor_ui_draw_slider(
     }
 }
 
+/* #############################################################################
+ * # [SECTION] Editor Layout
+ * #############################################################################
+ */
 LMTYN_API void lmtyn_editor_screen_to_world(
     lmtyn_editor *editor,
     u32 region_index,
@@ -396,17 +409,27 @@ LMTYN_API void lmtyn_editor_draw_circle(
 
     while (x >= y)
     {
-        i32 pts[8][2] = {
-            {cx + x, cy + y},
-            {cx + y, cy + x},
-            {cx - y, cy + x},
-            {cx - x, cy + y},
-            {cx - x, cy - y},
-            {cx - y, cy - x},
-            {cx + y, cy - x},
-            {cx + x, cy - y}};
+        u32 i;
+        i32 pts[8][2];
 
-        for (int i = 0; i < 8; ++i)
+        pts[0][0] = cx + x;
+        pts[0][1] = cy + y;
+        pts[1][0] = cx + y;
+        pts[1][1] = cy + x;
+        pts[2][0] = cx - y;
+        pts[2][1] = cy + x;
+        pts[3][0] = cx - x;
+        pts[3][1] = cy + y;
+        pts[4][0] = cx - x;
+        pts[4][1] = cy - y;
+        pts[5][0] = cx - y;
+        pts[5][1] = cy - x;
+        pts[6][0] = cx + y;
+        pts[6][1] = cy - x;
+        pts[7][0] = cx + x;
+        pts[7][1] = cy - y;
+
+        for (i = 0; i < 8; ++i)
         {
             i32 px = pts[i][0];
             i32 py = pts[i][1];
@@ -531,6 +554,9 @@ LMTYN_API void lmtyn_editor_draw_grid(
     i32 gx, gy;
     u32 x, y;
 
+    i32 axis_px;
+    i32 axis_py;
+
     /* Vertical lines */
     for (gx = start_x; gx <= end_x; ++gx)
     {
@@ -560,12 +586,14 @@ LMTYN_API void lmtyn_editor_draw_grid(
         }
 
         for (x = r->x; x < r->x + r->w; ++x)
+        {
             editor->framebuffer[py * fb_w + x] = editor->grid_color;
+        }
     }
 
     /* Axis lines at world (0,0) */
-    i32 axis_px = (i32)(cx - r->grid_scroll_offset_x * pixels_per_unit_x);
-    i32 axis_py = (i32)(cy + r->grid_scroll_offset_y * pixels_per_unit_y); /* Y flip */
+    axis_px = (i32)(cx - r->grid_scroll_offset_x * pixels_per_unit_x);
+    axis_py = (i32)(cy + r->grid_scroll_offset_y * pixels_per_unit_y); /* Y flip */
 
     if (axis_px >= (i32)r->x && axis_px < (i32)(r->x + r->w))
     {
@@ -669,35 +697,30 @@ LMTYN_API void lmtyn_editor_regions_update(
     u32 toolbar_h = editor->regions_toolbar_size_y;
     u32 main_h = editor->framebuffer_height - toolbar_h;
 
-    // --- XZ region (top-left) ---
     r_xz->x = 0;
     r_xz->y = 0;
     r_xz->w = editor->regions_split_x;
     r_xz->h = editor->regions_split_y;
 
-    // --- YZ region (top-right) ---
     r_yz->x = editor->regions_split_x;
     r_yz->y = 0;
     r_yz->w = editor->framebuffer_width - editor->regions_split_x;
     r_yz->h = editor->regions_split_y;
 
-    // --- XY region (bottom-left) ---
     r_xy->x = 0;
     r_xy->y = editor->regions_split_y;
     r_xy->w = editor->regions_split_x;
-    r_xy->h = main_h - editor->regions_split_y; // leave space for toolbar
+    r_xy->h = main_h - editor->regions_split_y; /* leave space for toolbar */
 
-    // --- Render region (bottom-right) ---
     r_render->x = editor->regions_split_x;
     r_render->y = editor->regions_split_y;
     r_render->w = editor->framebuffer_width - editor->regions_split_x;
-    r_render->h = main_h - editor->regions_split_y; // leave space for toolbar
+    r_render->h = main_h - editor->regions_split_y; /* leave space for toolbar */
 
-    // --- Toolbar region (bottom, full width) ---
     r_toolbar->x = 0;
-    r_toolbar->y = main_h; // start right after main regions
+    r_toolbar->y = main_h;
     r_toolbar->w = editor->framebuffer_width;
-    r_toolbar->h = toolbar_h; // height of toolbar
+    r_toolbar->h = toolbar_h;
 }
 
 LMTYN_API u8 lmtyn_editor_regions_find_selected_region_index(
@@ -778,6 +801,10 @@ LMTYN_API u8 lmtyn_editor_initialize(
     return 1;
 }
 
+/* #############################################################################
+ * # [SECTION] Input Processing
+ * #############################################################################
+ */
 LMTYN_API void lmtyn_editor_input_key_update(lmtyn_editor_key_state *k)
 {
     k->pressed = 0;
@@ -954,6 +981,9 @@ LMTYN_API void lmtyn_editor_input_update(
         {
             lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
 
+            u32 current_circle_index = editor->circles_count > 0 ? editor->circles_count - 1 : editor->circles_count;
+            lmtyn_shape_circle *circle = &editor->circles[current_circle_index];
+
             f32 wx, wy;
             lmtyn_editor_screen_to_world(editor, editor->regions_selected_region_index, input->mouse_x, input->mouse_y, &wx, &wy);
 
@@ -962,10 +992,6 @@ LMTYN_API void lmtyn_editor_input_update(
                 wx = lmtyn_snap(wx, editor->snap_interval);
                 wy = lmtyn_snap(wy, editor->snap_interval);
             }
-
-            u32 current_circle_index = editor->circles_count > 0 ? editor->circles_count - 1 : editor->circles_count;
-
-            lmtyn_shape_circle *circle = &editor->circles[current_circle_index];
 
             editor->circles_selected_circle_index = current_circle_index;
 
@@ -1007,6 +1033,10 @@ LMTYN_API void lmtyn_editor_input_update(
     }
 }
 
+/* #############################################################################
+ * # [SECTION] User Interface Processing
+ * #############################################################################
+ */
 LMTYN_API void lmtyn_editor_ui_update(
     lmtyn_editor *editor,
     lmtyn_editor_input *input)
@@ -1044,6 +1074,10 @@ LMTYN_API void lmtyn_editor_ui_update(
     lmtyn_editor_ui_draw_slider(editor, toolbar, &radius_slider);
 }
 
+/* #############################################################################
+ * # [SECTION] Main Renderer
+ * #############################################################################
+ */
 LMTYN_API void lmtyn_editor_render(
     lmtyn_editor *editor,
     lmtyn_editor_input *input)
