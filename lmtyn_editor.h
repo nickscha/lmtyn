@@ -100,6 +100,7 @@ typedef struct lmtyn_editor
     f32 circles_last_x;
     f32 circles_last_y;
     f32 circles_last_z;
+    f32 circles_last_radius;
 
 } lmtyn_editor;
 
@@ -770,6 +771,7 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->circles_color = 0x00FFCE1B;
     editor->circles_color_line = 0x00FFFFFF;
     editor->circles_color_selected = 0x00FF0000;
+    editor->circles_last_radius = 1.0f;
 
     lmtyn_editor_regions_update(editor);
 
@@ -967,7 +969,7 @@ LMTYN_API void lmtyn_editor_input_update(
 
             editor->circles_selected_circle_index = current_circle_index;
 
-            circle->radius = current_circle_index > 0 ? editor->circles[current_circle_index - 1].radius : 1.0f;
+            circle->radius = editor->circles_last_radius;
 
             if (editor->regions_selected_region_index == LMTYN_EDITOR_REGION_XZ)
             {
@@ -1037,6 +1039,7 @@ LMTYN_API void lmtyn_editor_ui_update(
         input->mouse_left.down);
 
     editor->circles[editor->circles_selected_circle_index].radius = radius_slider.slider_val;
+    editor->circles_last_radius = radius_slider.slider_val;
 
     lmtyn_editor_ui_draw_slider(editor, toolbar, &radius_slider);
 }
