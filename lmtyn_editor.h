@@ -306,7 +306,7 @@ LMTYN_API void lmtyn_editor_ui_update_slider(
     }
 }
 
-void lmtyn_editor_ui_draw_slider(
+LMTYN_API void lmtyn_editor_ui_draw_slider(
     lmtyn_editor *editor,
     lmtyn_editor_region *region,
     lmtyn_editor_ui_slider *slider)
@@ -407,6 +407,8 @@ LMTYN_API void lmtyn_editor_draw_circle(
     i32 y = 0;
     i32 err = 1 - x;
 
+    i32 cross_size = 4;
+
     while (x >= y)
     {
         u32 i;
@@ -453,6 +455,39 @@ LMTYN_API void lmtyn_editor_draw_circle(
         {
             x--;
             err += 2 * (y - x + 1);
+        }
+    }
+
+    /* --- Draw cross in the center --- */
+    {
+        i32 dx, dy;
+
+        for (dx = -cross_size; dx <= cross_size; ++dx)
+        {
+            i32 px = cx + dx;
+            i32 py = cy;
+
+            if (px >= (i32)r->x && px < (i32)(r->x + r->w) &&
+                py >= (i32)r->y && py < (i32)(r->y + r->h) &&
+                px >= 0 && px < (i32)fb_w &&
+                py >= 0 && py < (i32)fb_h)
+            {
+                editor->framebuffer[py * editor->framebuffer_width + px] = color;
+            }
+        }
+
+        for (dy = -cross_size; dy <= cross_size; ++dy)
+        {
+            i32 px = cx;
+            i32 py = cy + dy;
+
+            if (px >= (i32)r->x && px < (i32)(r->x + r->w) &&
+                py >= (i32)r->y && py < (i32)(r->y + r->h) &&
+                px >= 0 && px < (i32)fb_w &&
+                py >= 0 && py < (i32)fb_h)
+            {
+                editor->framebuffer[py * editor->framebuffer_width + px] = color;
+            }
         }
     }
 }
@@ -673,8 +708,6 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
             lmtyn_editor_world_to_screen(editor, i, a, b, &px, &py);
 
             pr = (u32)(circle->radius * (r->w / (2.0f * editor->grid_scale)));
-
-            /* TODO: draw line between current and previous circle using circle_prev */
 
             lmtyn_editor_draw_circle(
                 editor, i, px, py, pr,
