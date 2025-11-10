@@ -220,6 +220,13 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         ReleaseCapture();
         return 0;
 
+    case WM_RBUTTONDOWN:
+        win32_state->input->mouse_right.down = 1;
+        return 0;
+    case WM_RBUTTONUP:
+        win32_state->input->mouse_right.down = 0;
+        return 0;
+
     case WM_MOUSEMOVE:
         win32_state->input->mouse_x = LOWORD(lParam);
         win32_state->input->mouse_y = HIWORD(lParam);

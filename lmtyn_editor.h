@@ -834,6 +834,8 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->snap_enabled = 1;
     editor->snap_interval = 1.0f;
 
+    editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT;
+
     editor->circles = circles;
     editor->circles_capacity = circles_capacity;
     editor->circles_color = 0x00FFCE1B;
@@ -1024,7 +1026,13 @@ LMTYN_API void lmtyn_editor_input_update(
             initialized = 1;
         }
 
-        if (editor->regions_selected_region_index >= 0 &&
+        if (input->mouse_right.pressed)
+        {
+            editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_SELECTION;
+        }
+
+        if (editor->selection_mode == LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT &&
+            editor->regions_selected_region_index >= 0 &&
             editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER &&
             editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
         {
@@ -1071,11 +1079,11 @@ LMTYN_API void lmtyn_editor_input_update(
 
                 if (delta >= 0.0f)
                 {
-                    circle->radius += editor->snap_enabled ? editor->snap_interval : 0.1f;
+                    circle->radius -= editor->snap_enabled ? editor->snap_interval : 0.1f;
                 }
                 else
                 {
-                    circle->radius -= editor->snap_enabled ? editor->snap_interval : 0.1f;
+                    circle->radius += editor->snap_enabled ? editor->snap_interval : 0.1f;
                 }
 
                 if (editor->snap_enabled)
@@ -1100,6 +1108,11 @@ LMTYN_API void lmtyn_editor_input_update(
                 editor->circles[editor->circles_count - 1].radius = circle->radius;
             }
         }
+    }
+
+    if (input->mouse_left.pressed)
+    {
+        editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT;
     }
 }
 
