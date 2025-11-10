@@ -535,6 +535,12 @@ LMTYN_API void lmtyn_editor_draw_borders(
     {
         /* Selected region */
         lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
+        u32 border_color = editor->regions_color_border_selected;
+
+        if (editor->selection_mode == LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT)
+        {
+            border_color = 0x00FF0000;
+        }
 
         /* Top & Bottom edges */
         for (x = r->x; x < r->x + r->w; ++x)
@@ -543,12 +549,12 @@ LMTYN_API void lmtyn_editor_draw_borders(
 
             if (r->y >= 0 && r->y < editor->framebuffer_height)
             {
-                editor->framebuffer[r->y * editor->framebuffer_width + x] = editor->regions_color_border_selected;
+                editor->framebuffer[r->y * editor->framebuffer_width + x] = border_color;
             }
 
             if (yb >= 0 && yb < editor->framebuffer_height)
             {
-                editor->framebuffer[yb * editor->framebuffer_width + x] = editor->regions_color_border_selected;
+                editor->framebuffer[yb * editor->framebuffer_width + x] = border_color;
             }
         }
 
@@ -559,12 +565,12 @@ LMTYN_API void lmtyn_editor_draw_borders(
 
             if (r->x >= 0 && r->x < editor->framebuffer_width)
             {
-                editor->framebuffer[y * editor->framebuffer_width + r->x] = editor->regions_color_border_selected;
+                editor->framebuffer[y * editor->framebuffer_width + r->x] = border_color;
             }
 
             if (xr >= 0 && xr < editor->framebuffer_width)
             {
-                editor->framebuffer[y * editor->framebuffer_width + xr] = editor->regions_color_border_selected;
+                editor->framebuffer[y * editor->framebuffer_width + xr] = border_color;
             }
         }
     }
@@ -1026,7 +1032,10 @@ LMTYN_API void lmtyn_editor_input_update(
             initialized = 1;
         }
 
-        if (input->mouse_right.pressed)
+        if (input->mouse_right.pressed &&
+            editor->regions_selected_region_index >= 0 &&
+            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER &&
+            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
         {
             editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_SELECTION;
         }
@@ -1110,7 +1119,10 @@ LMTYN_API void lmtyn_editor_input_update(
         }
     }
 
-    if (input->mouse_left.pressed)
+    if (input->mouse_left.pressed &&
+        editor->regions_selected_region_index >= 0 &&
+        editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER &&
+        editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
     {
         editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT;
     }
