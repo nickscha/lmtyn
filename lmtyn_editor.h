@@ -61,6 +61,15 @@ typedef struct lmtyn_editor_region
 
 } lmtyn_editor_region;
 
+typedef enum lmtyn_editor_selection_mode
+{
+
+    LMTYN_EDITOR_MODE_CIRCLE_SELECTION = 0,
+    LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT,
+    LMTYN_EDITOR_MODE_COUNT
+
+} lmtyn_editor_selection_mode;
+
 typedef struct lmtyn_editor
 {
     u32 *framebuffer;
@@ -88,7 +97,8 @@ typedef struct lmtyn_editor
     u32 grid_color;
     u32 grid_color_axis;
 
-    /* Data storage */
+    lmtyn_editor_selection_mode selection_mode;
+
     lmtyn_shape_circle *circles;
     u32 circles_capacity;
     u32 circles_count;
@@ -134,6 +144,8 @@ typedef struct lmtyn_editor_input
 
     u32 mouse_x;
     u32 mouse_y;
+
+    i32 mouse_wheel_delta;
 
 } lmtyn_editor_input;
 
@@ -407,7 +419,7 @@ LMTYN_API void lmtyn_editor_draw_circle(
     i32 y = 0;
     i32 err = 1 - x;
 
-    i32 cross_size = 4;
+    i32 cross_size = 6;
 
     while (x >= y)
     {
@@ -972,6 +984,10 @@ LMTYN_API void lmtyn_editor_input_update(
             editor->circles[0].center_y = 0.0f;
             editor->circles[0].center_z = 0.0f;
             editor->circles[0].radius = 1.0f;
+            editor->circles_last_radius = 1.0f;
+            editor->circles_last_x = 0.0f;
+            editor->circles_last_y = 0.0f;
+            editor->circles_last_z = 0.0f;
 
             for (i = 0; i < LMTYN_EDITOR_REGION_COUNT; ++i)
             {
@@ -981,9 +997,9 @@ LMTYN_API void lmtyn_editor_input_update(
         }
     }
 
-    if (input->key_plus.pressed || input->key_minus.pressed)
+    if (input->key_plus.down || input->key_minus.down)
     {
-        f32 grid_scale_factor = input->key_plus.pressed ? 0.9f : 1.1f;
+        f32 grid_scale_factor = input->key_plus.down ? 0.95f : 1.05f;
 
         editor->grid_scale *= grid_scale_factor;
 
@@ -1047,6 +1063,27 @@ LMTYN_API void lmtyn_editor_input_update(
                 circle->center_x = wx;
                 circle->center_y = wy;
                 circle->center_z = editor->circles_last_z;
+            }
+
+            if (input->mouse_wheel_delta != 0)
+            {
+                f32 delta = (f32)input->mouse_wheel_delta / 120.0f;
+
+                if (delta >= 0.0f)
+                {
+                    circle->radius += editor->snap_enabled ? editor->snap_interval : 0.1f;
+                }
+                else
+                {
+                    circle->radius -= editor->snap_enabled ? editor->snap_interval : 0.1f;
+                }
+
+                if (editor->snap_enabled)
+                {
+                    circle->radius = lmtyn_snap(circle->radius, editor->snap_interval);
+                }
+
+                circle->radius = lmtyn_clampf(circle->radius, 0.1f, 10.0f);
             }
 
             if (input->mouse_left.pressed)
@@ -1132,6 +1169,8 @@ LMTYN_API void lmtyn_editor_render(
     lmtyn_editor_draw_circles(editor);
 
     lmtyn_editor_ui_update(editor, input);
+
+    input->mouse_wheel_delta = 0;
 }
 
 #endif /* LMTYN_EDITOR_H */

@@ -279,6 +279,14 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         return 0;
     }
+    case WM_MOUSEWHEEL:
+    {
+        short delta = GET_WHEEL_DELTA_WPARAM(wParam);
+
+        win32_state->input->mouse_wheel_delta += (i32)delta;
+
+        return 0;
+    }
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
