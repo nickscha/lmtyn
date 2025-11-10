@@ -1037,6 +1037,13 @@ LMTYN_API void lmtyn_editor_input_update(
             editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER &&
             editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
         {
+            /* If we are already in selection mode clicking right mouse button again is like CTRL+Z */
+            if (editor->selection_mode == LMTYN_EDITOR_MODE_CIRCLE_SELECTION &&
+                editor->circles_count > 0)
+            {
+                editor->circles_count--;
+            }
+
             editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_SELECTION;
         }
 
