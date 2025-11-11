@@ -136,43 +136,6 @@ LMTYN_API void win32_lmtyn_editor_resize_framebuffer(lmtyn_editor *editor, i32 n
     }
 }
 
-LMTYN_API void win32_lmtyn_editor_draw_region_labels(lmtyn_editor *editor, HDC hdc)
-{
-    u32 i;
-
-    SetTextColor(hdc, RGB(255, 255, 255));
-    SetBkMode(hdc, TRANSPARENT);
-
-    for (i = 0; i < LMTYN_EDITOR_REGION_COUNT - 1; ++i)
-    {
-        lmtyn_editor_region *region = &editor->regions[i];
-
-        char *axis_up;
-        char *axis_right;
-
-        if (i == LMTYN_EDITOR_REGION_XZ)
-        {
-            axis_up = "Z";
-            axis_right = "X";
-        }
-
-        if (i == LMTYN_EDITOR_REGION_YZ)
-        {
-            axis_up = "Z";
-            axis_right = "Y";
-        }
-
-        if (i == LMTYN_EDITOR_REGION_XY)
-        {
-            axis_up = "Y";
-            axis_right = "X";
-        }
-
-        TextOutA(hdc, region->x + 20, region->y + region->h - 20, axis_right, 1);
-        TextOutA(hdc, region->x + 5, region->y + region->h - 40, axis_up, 1);
-    }
-}
-
 typedef struct win32_lmtyn_editor_state
 {
     lmtyn_editor *editor;
@@ -430,8 +393,6 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
                       0, 0, editor.framebuffer_width, editor.framebuffer_height,
                       0, 0, editor.framebuffer_width, editor.framebuffer_height,
                       editor.framebuffer, &bmi, DIB_RGB_COLORS, SRCCOPY);
-
-        win32_lmtyn_editor_draw_region_labels(&editor, hdc);
 
         Sleep(16);
 

@@ -601,6 +601,34 @@ LMTYN_API void lmtyn_editor_draw_character(
     }
 }
 
+LMTYN_API void lmtyn_editor_draw_text(
+    lmtyn_editor *editor,
+    u32 x,
+    u32 y,
+    const char *text,
+    u32 color_fg)
+{
+    u32 cursor_x = x;
+    u32 cursor_y = y;
+    u32 i = 0;
+
+    if (!text)
+        return;
+
+    while (text[i] != '\0')
+    {
+        char c = text[i];
+
+        /* Draw the character */
+        lmtyn_editor_draw_character(editor, cursor_x, cursor_y, (u8)c, color_fg);
+
+        /* Advance cursor horizontally */
+        cursor_x += editor->font_glyph_width;
+
+        i++;
+    }
+}
+
 /* #############################################################################
  * # [SECTION] User Interface
  * #############################################################################
@@ -1156,6 +1184,41 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
     }
 }
 
+LMTYN_API void lmtyn_editor_draw_region_labels(lmtyn_editor *editor)
+{
+    u32 i;
+
+    for (i = 0; i < LMTYN_EDITOR_REGION_COUNT - 2; ++i)
+    {
+        lmtyn_editor_region *region = &editor->regions[i];
+
+        u8 axis_up = 'Z';
+        u8 axis_right = 'X';
+
+        if (i == LMTYN_EDITOR_REGION_YZ)
+        {
+            axis_right = 'Y';
+        }
+
+        if (i == LMTYN_EDITOR_REGION_XY)
+        {
+            axis_up = 'Y';
+        }
+
+        lmtyn_editor_draw_character(
+            editor,
+            region->x + 25, region->y + region->h - 20,
+            axis_right,
+            editor->grid_color_axis);
+
+        lmtyn_editor_draw_character(
+            editor,
+            region->x + 5, region->y + region->h - 40,
+            axis_up,
+            editor->grid_color_axis);
+    }
+}
+
 LMTYN_API void lmtyn_editor_regions_update(
     lmtyn_editor *editor)
 {
@@ -1618,18 +1681,13 @@ LMTYN_API void lmtyn_editor_render(
     lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_REGION_XZ);
     lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_REGION_YZ);
     lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_REGION_XY);
+    lmtyn_editor_draw_region_labels(editor);
 
     lmtyn_editor_draw_borders(editor);
 
     lmtyn_editor_draw_circles(editor);
 
     lmtyn_editor_ui_update(editor, input);
-
-    lmtyn_editor_draw_character(editor, input->mouse_x + 20, input->mouse_y + 20, 'l', 0x00FF00);
-    lmtyn_editor_draw_character(editor, input->mouse_x + 20 + (1.0f * LMTYN_EDITOR_FONT_GLYPH_WIDTH), input->mouse_y + 20, 'm', 0x00FF00);
-    lmtyn_editor_draw_character(editor, input->mouse_x + 20 + (2.0f * LMTYN_EDITOR_FONT_GLYPH_WIDTH), input->mouse_y + 20, 't', 0x00FF00);
-    lmtyn_editor_draw_character(editor, input->mouse_x + 20 + (3.0f * LMTYN_EDITOR_FONT_GLYPH_WIDTH), input->mouse_y + 20, 'y', 0x00FF00);
-    lmtyn_editor_draw_character(editor, input->mouse_x + 20 + (4.0f * LMTYN_EDITOR_FONT_GLYPH_WIDTH), input->mouse_y + 20, 'n', 0x00FF00);
 
     input->mouse_wheel_delta = 0;
 }
