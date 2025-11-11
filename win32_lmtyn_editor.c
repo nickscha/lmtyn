@@ -251,10 +251,7 @@ LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     case WM_MOUSEWHEEL:
     {
-        short delta = GET_WHEEL_DELTA_WPARAM(wParam);
-
-        win32_state->input->mouse_wheel_delta += (i32)delta;
-
+        win32_state->input->mouse_wheel_delta += (i32)GET_WHEEL_DELTA_WPARAM(wParam);
         return 0;
     }
     case WM_DESTROY:
@@ -331,7 +328,7 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
 
     HWND hwnd = CreateWindowEx(
-        0, wc.lpszClassName, "lmtyn",
+        0, wc.lpszClassName, "lmtyn v0.2",
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,
         0, 0,
         rect.right - rect.left, rect.bottom - rect.top,
@@ -342,8 +339,8 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
     /* Center the mouse in the XY framebuffer region */
     {
         lmtyn_editor_region *xy_region = &editor.regions[LMTYN_EDITOR_REGION_XY];
-        i32 center_x = xy_region->x + (int)(xy_region->w / 2);
-        i32 center_y = xy_region->y + (int)(xy_region->h / 2);
+        i32 center_x = xy_region->x + (i32)(xy_region->w / 2);
+        i32 center_y = xy_region->y + (i32)(xy_region->h / 2);
         POINT pt = {center_x, center_y};
         ClientToScreen(hwnd, &pt);
         SetCursorPos(pt.x, pt.y);
@@ -389,12 +386,13 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
             lmtyn_editor_draw_borders(&editor);
         }
 
-        StretchDIBits(hdc,
-                      0, 0, editor.framebuffer_width, editor.framebuffer_height,
-                      0, 0, editor.framebuffer_width, editor.framebuffer_height,
-                      editor.framebuffer, &bmi, DIB_RGB_COLORS, SRCCOPY);
+        StretchDIBits(
+            hdc,
+            0, 0, editor.framebuffer_width, editor.framebuffer_height,
+            0, 0, editor.framebuffer_width, editor.framebuffer_height,
+            editor.framebuffer, &bmi, DIB_RGB_COLORS, SRCCOPY);
 
-        Sleep(16);
+        Sleep(1);
 
         frame++;
     }
