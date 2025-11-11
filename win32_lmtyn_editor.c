@@ -24,77 +24,6 @@ LMTYN_API u8 csr_init(csr_context *ctx, u32 width, u32 height)
     return 1;
 }
 
-LMTYN_API void csr_render_mesh(csr_context *ctx, lmtyn_mesh *mesh, v3 cam_position, v3 model_position, u32 frame)
-{
-    v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
-    v3 cam_look_at_pos = vm_v3(0.0f, 0.0f, 0.0f);
-    f32 cam_fov = 90.0f;
-    v3 model_rotation_y = vm_v3(0.0f, 1.0f, 0.0);
-
-    m4x4 projection = vm_m4x4_perspective(vm_radf(cam_fov), (f32)ctx->width / (f32)ctx->height, 0.1f, 1000.0f);
-    m4x4 view = vm_m4x4_lookAt(cam_position, cam_look_at_pos, world_up);
-    m4x4 projection_view = vm_m4x4_mul(projection, view);
-    m4x4 model_base = vm_m4x4_translate(vm_m4x4_identity, model_position);
-    m4x4 model_view_projection = vm_m4x4_mul(projection_view, model_base);
-
-    /* Render cube */
-    csr_render(
-        ctx,
-        CSR_RENDER_SOLID,
-        CSR_CULLING_CCW_BACKFACE, 3,
-        mesh->vertices, mesh->vertices_size,
-        (int *)mesh->indices, mesh->indices_size,
-        model_view_projection.e);
-}
-
-LMTYN_API void csr_blit_scaled(csr_context *ctx, lmtyn_editor *editor)
-{
-    lmtyn_editor_region *r = &editor->regions[LMTYN_EDITOR_REGION_RENDER];
-
-    u32 y;
-    u32 x;
-
-    for (y = 0; y < r->h; ++y)
-    {
-        u32 fb_y = r->y + y;
-
-        if (fb_y >= editor->framebuffer_height)
-        {
-            break;
-        }
-
-        for (x = 0; x < r->w; ++x)
-        {
-            u32 fb_x = r->x + x;
-
-            /* Sample CSR pixel at pixel center and flip Y */
-            u32 src_x = (u32)((x + 0.5f) * ctx->width / r->w);
-            u32 src_y = (u32)((y + 0.5f) * ctx->height / r->h);
-
-            csr_color *src;
-
-            if (fb_x >= editor->framebuffer_width)
-            {
-                break;
-            }
-
-            if (src_x >= ctx->width)
-            {
-                src_x = ctx->width - 1;
-            }
-
-            if (src_y >= ctx->height)
-            {
-                src_y = ctx->height - 1;
-            }
-
-            src = &ctx->framebuffer[src_y * ctx->width + src_x];
-
-            editor->framebuffer[fb_y * editor->framebuffer_width + fb_x] = (src->r << 16) | (src->g << 8) | (src->b);
-        }
-    }
-}
-
 LMTYN_API void win32_lmtyn_editor_resize_framebuffer(lmtyn_editor *editor, i32 new_w, i32 new_h, BITMAPINFO *bmi, csr_context *ctx)
 {
     if (new_w <= 0 || new_h <= 0)
@@ -140,7 +69,6 @@ typedef struct win32_lmtyn_editor_state
 {
     lmtyn_editor *editor;
     lmtyn_editor_input *input;
-    lmtyn_mesh *mesh;
     BITMAPINFO *bmi;
     csr_context *ctx;
 
@@ -287,6 +215,12 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
     circles[0].radius = 1.0f;
     editor.circles_count = 1;
 
+    lmtyn_mesh mesh = {0};
+    mesh.vertices_capacity = sizeof(f32) * 4096;
+    mesh.indices_capacity = sizeof(u32) * 4096;
+    mesh.vertices = (f32 *)malloc(sizeof(f32) * mesh.vertices_capacity);
+    mesh.indices = (u32 *)malloc(sizeof(u32) * mesh.indices_capacity);
+
     win32_lmtyn_editor_resize_framebuffer(&editor, width, height, &bmi, &ctx);
 
     lmtyn_editor_initialize(
@@ -295,18 +229,12 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
         width,
         height,
         circles,
-        CIRCLES_CAPACITY);
-
-    lmtyn_mesh mesh = {0};
-    mesh.vertices_capacity = sizeof(f32) * 4096;
-    mesh.indices_capacity = sizeof(u32) * 4096;
-    mesh.vertices = (f32 *)malloc(sizeof(f32) * mesh.vertices_capacity);
-    mesh.indices = (u32 *)malloc(sizeof(u32) * mesh.indices_capacity);
+        CIRCLES_CAPACITY,
+        &mesh);
 
     win32_lmtyn_editor_state state = {0};
     state.editor = &editor;
     state.input = &editor_input;
-    state.mesh = &mesh;
     state.bmi = &bmi;
     state.ctx = &ctx;
 
@@ -350,9 +278,6 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
 
     HDC hdc = GetDC(hwnd);
 
-    csr_color clear_color = {40, 40, 40};
-    v3 cam_position = vm_v3(0.0f, 0.0f, 1.0f);
-
     u32 frame;
 
     for (;;)
@@ -368,23 +293,10 @@ i32 WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpCmd, i32 nShow)
             DispatchMessage(&msg);
         }
 
-        lmtyn_editor_render(&editor, &editor_input);
-
-        /* Draw 3D Model */
-        if (editor.circles_count > 1)
-        {
-            mesh.vertices_size = 0;
-            mesh.indices_size = 0;
-
-            lmtyn_mesh_generate(&mesh, 0, circles, editor.circles_count, 4);
-            lmtyn_mesh_normalize(&mesh, 0.0f, 0.0f, 0.0f, 1.0f);
-
-            csr_render_clear_screen(&ctx, clear_color);
-            csr_render_mesh(&ctx, &mesh, cam_position, vm_v3_zero, frame);
-            csr_blit_scaled(&ctx, &editor);
-
-            lmtyn_editor_draw_borders(&editor);
-        }
+        lmtyn_editor_render(
+            &editor,
+            &editor_input,
+            &ctx);
 
         StretchDIBits(
             hdc,

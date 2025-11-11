@@ -1,7 +1,9 @@
 #ifndef LMTYN_EDITOR_H
 #define LMTYN_EDITOR_H
 
-#include "lmtyn.h"
+#include "lmtyn.h"    /* The main modelling algorithm    */
+#include "deps/csr.h" /* 3D Software Renderer            */
+#include "deps/vm.h"  /* 3D Linear Algebra / Vector Math */
 
 /* contains some general fields relevant for all ui elements */
 typedef struct lmtyn_editor_ui_header
@@ -99,6 +101,7 @@ typedef struct lmtyn_editor
 
     lmtyn_editor_selection_mode selection_mode;
 
+    lmtyn_mesh *mesh;
     lmtyn_shape_circle *circles;
     u32 circles_capacity;
     u32 circles_count;
@@ -1219,6 +1222,99 @@ LMTYN_API void lmtyn_editor_draw_region_labels(lmtyn_editor *editor)
     }
 }
 
+LMTYN_API void lmtyn_editor_draw_3d_framebuffer(lmtyn_editor *editor, csr_context *ctx)
+{
+    lmtyn_editor_region *r = &editor->regions[LMTYN_EDITOR_REGION_RENDER];
+
+    u32 y;
+    u32 x;
+
+    for (y = 0; y < r->h; ++y)
+    {
+        u32 fb_y = r->y + y;
+
+        if (fb_y >= editor->framebuffer_height)
+        {
+            break;
+        }
+
+        for (x = 0; x < r->w; ++x)
+        {
+            u32 fb_x = r->x + x;
+
+            /* Sample CSR pixel at pixel center and flip Y */
+            u32 src_x = (u32)((x + 0.5f) * ctx->width / r->w);
+            u32 src_y = (u32)((y + 0.5f) * ctx->height / r->h);
+
+            csr_color *src;
+
+            if (fb_x >= editor->framebuffer_width)
+            {
+                break;
+            }
+
+            if (src_x >= ctx->width)
+            {
+                src_x = ctx->width - 1;
+            }
+
+            if (src_y >= ctx->height)
+            {
+                src_y = ctx->height - 1;
+            }
+
+            src = &ctx->framebuffer[src_y * ctx->width + src_x];
+
+            editor->framebuffer[fb_y * editor->framebuffer_width + fb_x] = (src->r << 16) | (src->g << 8) | (src->b);
+        }
+    }
+}
+
+LMTYN_API void lmtyn_editor_draw_3d_model(
+    lmtyn_editor *editor,
+    csr_context *ctx)
+{
+    csr_color clear_color = {40, 40, 40};
+    v3 cam_position = vm_v3(0.0f, 0.0f, 1.0f);
+    v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
+    v3 cam_look_at_pos = vm_v3(0.0f, 0.0f, 0.0f);
+    f32 cam_fov = 90.0f;
+    v3 model_rotation_y = vm_v3(0.0f, 1.0f, 0.0);
+    v3 model_position = vm_v3_zero;
+
+    m4x4 projection = vm_m4x4_perspective(vm_radf(cam_fov), (f32)ctx->width / (f32)ctx->height, 0.1f, 1000.0f);
+    m4x4 view = vm_m4x4_lookAt(cam_position, cam_look_at_pos, world_up);
+    m4x4 projection_view = vm_m4x4_mul(projection, view);
+    m4x4 model_base = vm_m4x4_translate(vm_m4x4_identity, model_position);
+    m4x4 model_view_projection = vm_m4x4_mul(projection_view, model_base);
+
+    if (editor->circles_count < 2)
+    {
+        return;
+    }
+
+    /* Reset Mesh vertices/indices */
+    editor->mesh->vertices_size = 0;
+    editor->mesh->indices_size = 0;
+
+    /* Generate Mesh */
+    lmtyn_mesh_generate(editor->mesh, 0, editor->circles, editor->circles_count, 4);
+    lmtyn_mesh_normalize(editor->mesh, 0.0f, 0.0f, 0.0f, 1.0f);
+
+    /* Draw Mesh to CSR Framebuffer */
+    csr_render_clear_screen(ctx, clear_color);
+    csr_render(
+        ctx,
+        CSR_RENDER_SOLID,
+        CSR_CULLING_CCW_BACKFACE, 3,
+        editor->mesh->vertices, editor->mesh->vertices_size,
+        (i32 *)editor->mesh->indices, editor->mesh->indices_size,
+        model_view_projection.e);
+
+    /* Draw CSR Framebuffer to Editor Framebuffer */
+    lmtyn_editor_draw_3d_framebuffer(editor, ctx);
+}
+
 LMTYN_API void lmtyn_editor_regions_update(
     lmtyn_editor *editor)
 {
@@ -1288,7 +1384,8 @@ LMTYN_API u8 lmtyn_editor_initialize(
     u32 framebuffer_width,
     u32 framebuffer_height,
     lmtyn_shape_circle *circles,
-    u32 circles_capacity)
+    u32 circles_capacity,
+    lmtyn_mesh *mesh)
 {
     if (!editor || !framebuffer || !circles || framebuffer_width < 1 || framebuffer_height < 1 || circles_capacity < 1)
     {
@@ -1301,7 +1398,7 @@ LMTYN_API u8 lmtyn_editor_initialize(
 
     editor->grid_scale = 10.0f;
     editor->grid_cell_size = 1.0f;
-    editor->grid_scroll_speed = 1.0f;
+    editor->grid_scroll_speed = 0.5f;
     editor->grid_color = 0x20404040;
     editor->grid_color_axis = 0x00666666;
 
@@ -1321,10 +1418,11 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->regions_toolbar_size_y = 30;
 
     editor->snap_enabled = 1;
-    editor->snap_interval = 1.0f;
+    editor->snap_interval = 0.5f;
 
     editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT;
 
+    editor->mesh = mesh;
     editor->circles = circles;
     editor->circles_capacity = circles_capacity;
     editor->circles_color = 0x00FFCE1B;
@@ -1668,7 +1766,8 @@ LMTYN_API void lmtyn_editor_ui_update(
  */
 LMTYN_API void lmtyn_editor_render(
     lmtyn_editor *editor,
-    lmtyn_editor_input *input)
+    lmtyn_editor_input *input,
+    csr_context *ctx)
 {
     lmtyn_editor_input_update(editor, input);
 
@@ -1683,9 +1782,9 @@ LMTYN_API void lmtyn_editor_render(
     lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_REGION_XY);
     lmtyn_editor_draw_region_labels(editor);
 
-    lmtyn_editor_draw_borders(editor);
-
     lmtyn_editor_draw_circles(editor);
+    lmtyn_editor_draw_3d_model(editor, ctx);
+    lmtyn_editor_draw_borders(editor);
 
     lmtyn_editor_ui_update(editor, input);
 
