@@ -44,6 +44,7 @@ typedef enum lmtyn_editor_regions
     LMTYN_EDITOR_REGION_YZ,
     LMTYN_EDITOR_REGION_XY,
     LMTYN_EDITOR_REGION_RENDER,
+    LMTYN_EDITOR_REGION_MENU,
     LMTYN_EDITOR_REGION_TOOLBAR,
     LMTYN_EDITOR_REGION_COUNT
 
@@ -99,6 +100,7 @@ typedef struct lmtyn_editor
     u32 regions_color_border;
     u32 regions_color_border_selected;
     u32 regions_toolbar_size_y;
+    u32 regions_menu_size_x;
 
     u8 snap_enabled;
     f32 snap_interval;
@@ -558,6 +560,14 @@ static u8 lmtyn_editor_font_data[] = {
     0xFF, 0xC0, 0xFF, 0xC0, 0x87, 0xC0, 0x02, 0x00, 0x32, 0x00, 0xF8, 0x40,
     0xFF, 0xC0, 0xFF, 0xC0, 0xFF, 0xC0, 0xFF, 0xC0, 0xFF, 0xC0, 0xFF, 0xC0,
     0xFF, 0xC0, 0xFF, 0xC0};
+
+LMTYN_API LMTYN_INLINE u8 lmtyn_editor_is_drawing_region(lmtyn_editor *editor)
+{
+    return editor->regions_selected_region_index >= 0 &&
+           (editor->regions_selected_region_index == LMTYN_EDITOR_REGION_XZ ||
+            editor->regions_selected_region_index == LMTYN_EDITOR_REGION_YZ ||
+            editor->regions_selected_region_index == LMTYN_EDITOR_REGION_XY);
+}
 
 LMTYN_API void lmtyn_editor_draw_character(
     lmtyn_editor *editor,
@@ -1056,6 +1066,7 @@ LMTYN_API void lmtyn_editor_draw_borders(
     u32 y;
 
     if (editor->regions_selected_region_index >= 0 &&
+        editor->regions_selected_region_index != LMTYN_EDITOR_REGION_MENU &&
         editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
     {
         /* Selected region */
@@ -1558,41 +1569,55 @@ LMTYN_API void lmtyn_editor_draw_3d_model(
     lmtyn_editor_draw_3d_framebuffer(editor, ctx);
 }
 
-LMTYN_API void lmtyn_editor_regions_update(
-    lmtyn_editor *editor)
+LMTYN_API void lmtyn_editor_regions_update(lmtyn_editor *editor)
 {
     lmtyn_editor_region *r_xz = &editor->regions[LMTYN_EDITOR_REGION_XZ];
     lmtyn_editor_region *r_yz = &editor->regions[LMTYN_EDITOR_REGION_YZ];
     lmtyn_editor_region *r_xy = &editor->regions[LMTYN_EDITOR_REGION_XY];
     lmtyn_editor_region *r_render = &editor->regions[LMTYN_EDITOR_REGION_RENDER];
+    lmtyn_editor_region *r_menu = &editor->regions[LMTYN_EDITOR_REGION_MENU];
     lmtyn_editor_region *r_toolbar = &editor->regions[LMTYN_EDITOR_REGION_TOOLBAR];
 
+    u32 left_w = editor->regions_menu_size_x;
     u32 toolbar_h = editor->regions_toolbar_size_y;
-    u32 main_h = editor->framebuffer_height - toolbar_h;
+    u32 fb_w = editor->framebuffer_width;
+    u32 fb_h = editor->framebuffer_height;
+    u32 main_h = fb_h - toolbar_h;
 
-    r_xz->x = 0;
+    /* Menu */
+    r_menu->x = 0;
+    r_menu->y = 0;
+    r_menu->w = left_w;
+    r_menu->h = main_h;
+
+    /* XZ axis */
+    r_xz->x = left_w;
     r_xz->y = 0;
     r_xz->w = editor->regions_split_x;
     r_xz->h = editor->regions_split_y;
 
-    r_yz->x = editor->regions_split_x;
+    /* YZ axis */
+    r_yz->x = left_w + editor->regions_split_x;
     r_yz->y = 0;
-    r_yz->w = editor->framebuffer_width - editor->regions_split_x;
+    r_yz->w = fb_w - (left_w + editor->regions_split_x);
     r_yz->h = editor->regions_split_y;
 
-    r_xy->x = 0;
+    /* XY axis */
+    r_xy->x = left_w;
     r_xy->y = editor->regions_split_y;
     r_xy->w = editor->regions_split_x;
-    r_xy->h = main_h - editor->regions_split_y; /* leave space for toolbar */
+    r_xy->h = main_h - editor->regions_split_y;
 
-    r_render->x = editor->regions_split_x;
+    /* 3D Render */
+    r_render->x = left_w + editor->regions_split_x;
     r_render->y = editor->regions_split_y;
-    r_render->w = editor->framebuffer_width - editor->regions_split_x;
-    r_render->h = main_h - editor->regions_split_y; /* leave space for toolbar */
+    r_render->w = fb_w - (left_w + editor->regions_split_x);
+    r_render->h = main_h - editor->regions_split_y;
 
+    /* Toolbar */
     r_toolbar->x = 0;
     r_toolbar->y = main_h;
-    r_toolbar->w = editor->framebuffer_width;
+    r_toolbar->w = fb_w;
     r_toolbar->h = toolbar_h;
 }
 
@@ -1649,6 +1674,7 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->regions[LMTYN_EDITOR_REGION_YZ].color_background = 0x00204020;
     editor->regions[LMTYN_EDITOR_REGION_XY].color_background = 0x00402020;
     editor->regions[LMTYN_EDITOR_REGION_RENDER].color_background = 0x00303030;
+    editor->regions[LMTYN_EDITOR_REGION_MENU].color_background = 0x00202020;
     editor->regions[LMTYN_EDITOR_REGION_TOOLBAR].color_background = 0x00202020;
 
     editor->regions_selected_region_index = -1;
@@ -1659,6 +1685,7 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->regions_color_border = 0x404040;
     editor->regions_color_border_selected = 0x00FFCE1B;
     editor->regions_toolbar_size_y = 30;
+    editor->regions_menu_size_x = 200;
 
     editor->snap_enabled = 1;
     editor->snap_interval = 0.5f;
@@ -1731,7 +1758,7 @@ LMTYN_API void lmtyn_editor_input_update(
         u32 size_min = editor->regions_split_size_min;
         u32 size_factor = editor->regions_split_size_factor;
         u32 max_split_y = editor->framebuffer_height - editor->regions_toolbar_size_y - size_min;
-        u32 max_split_x = editor->framebuffer_width - size_min;
+        u32 max_split_x = editor->framebuffer_width - editor->regions_menu_size_x - size_min;
 
         /* Horizontal Split */
         if (input->key_left.down && editor->regions_split_x > size_min)
@@ -1862,10 +1889,7 @@ LMTYN_API void lmtyn_editor_input_update(
             initialized = 1;
         }
 
-        if (input->mouse_right.pressed &&
-            editor->regions_selected_region_index >= 0 &&
-            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER &&
-            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
+        if (input->mouse_right.pressed && lmtyn_editor_is_drawing_region(editor))
         {
             /* If we are already in selection mode clicking right mouse button again is like CTRL+Z */
             if (editor->selection_mode == LMTYN_EDITOR_MODE_CIRCLE_SELECTION &&
@@ -1877,10 +1901,7 @@ LMTYN_API void lmtyn_editor_input_update(
             editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_SELECTION;
         }
 
-        if (editor->selection_mode == LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT &&
-            editor->regions_selected_region_index >= 0 &&
-            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER &&
-            editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
+        if (editor->selection_mode == LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT && lmtyn_editor_is_drawing_region(editor))
         {
             lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
 
@@ -1956,10 +1977,7 @@ LMTYN_API void lmtyn_editor_input_update(
         }
     }
 
-    if (input->mouse_left.pressed &&
-        editor->regions_selected_region_index >= 0 &&
-        editor->regions_selected_region_index != LMTYN_EDITOR_REGION_RENDER &&
-        editor->regions_selected_region_index != LMTYN_EDITOR_REGION_TOOLBAR)
+    if (input->mouse_left.pressed && lmtyn_editor_is_drawing_region(editor))
     {
         editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT;
     }
@@ -2021,6 +2039,7 @@ LMTYN_API void lmtyn_editor_render(
     lmtyn_editor_draw_background(editor, LMTYN_EDITOR_REGION_YZ);
     lmtyn_editor_draw_background(editor, LMTYN_EDITOR_REGION_XY);
     lmtyn_editor_draw_background(editor, LMTYN_EDITOR_REGION_RENDER);
+    lmtyn_editor_draw_background(editor, LMTYN_EDITOR_REGION_MENU);
     lmtyn_editor_draw_background(editor, LMTYN_EDITOR_REGION_TOOLBAR);
 
     lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_REGION_XZ);
