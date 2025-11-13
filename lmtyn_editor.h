@@ -129,8 +129,8 @@ typedef struct lmtyn_editor
     f32 circles_last_z;
     f32 circles_last_radius;
 
-    f32 font_glyph_width;
-    f32 font_glyph_height;
+    u32 font_glyph_width;
+    u32 font_glyph_height;
 
 } lmtyn_editor;
 
@@ -630,7 +630,7 @@ LMTYN_API void lmtyn_editor_draw_text(
     lmtyn_editor *editor,
     u32 x,
     u32 y,
-    const char *text,
+    char *text,
     u32 color_fg)
 {
     u32 cursor_x = x;
@@ -1206,7 +1206,7 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
     u32 i;
     u32 c;
 
-    for (i = 0; i < LMTYN_EDITOR_REGION_COUNT - 2; ++i)
+    for (i = 0; i < LMTYN_EDITOR_REGION_COUNT - 3; ++i)
     {
         lmtyn_editor_region *r = &editor->regions[i];
 
@@ -1541,7 +1541,6 @@ LMTYN_API void lmtyn_editor_draw_3d_model(
     v3 world_up = vm_v3(0.0f, 1.0f, 0.0f);
     v3 cam_look_at_pos = vm_v3(0.0f, 0.0f, 0.0f);
     f32 cam_fov = 90.0f;
-    v3 model_rotation_y = vm_v3(0.0f, 1.0f, 0.0);
     v3 model_position = vm_v3_zero;
 
     m4x4 projection = vm_m4x4_perspective(vm_radf(cam_fov), (f32)ctx->width / (f32)ctx->height, 0.1f, 1000.0f);
@@ -1678,8 +1677,8 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->regions[LMTYN_EDITOR_REGION_TOOLBAR].color_background = 0x00202020;
 
     editor->regions_selected_region_index = -1;
-    editor->regions_split_x = editor->framebuffer_width / 2;
-    editor->regions_split_y = editor->framebuffer_height / 2;
+    editor->regions_split_x = (editor->framebuffer_width - editor->regions_menu_size_x) / 2;
+    editor->regions_split_y = (editor->framebuffer_height - editor->regions_toolbar_size_y) / 2;
     editor->regions_split_size_min = 50;
     editor->regions_split_size_factor = 20;
     editor->regions_color_border = 0x404040;
@@ -1903,8 +1902,6 @@ LMTYN_API void lmtyn_editor_input_update(
 
         if (editor->selection_mode == LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT && lmtyn_editor_is_drawing_region(editor))
         {
-            lmtyn_editor_region *r = &editor->regions[editor->regions_selected_region_index];
-
             u32 current_circle_index = editor->circles_count > 0 ? editor->circles_count - 1 : editor->circles_count;
             lmtyn_shape_circle *circle = &editor->circles[current_circle_index];
 

@@ -43,8 +43,8 @@ LMTYN_API void win32_lmtyn_editor_resize_framebuffer(lmtyn_editor *editor, i32 n
     bmi->bmiHeader.biWidth = new_w;
     bmi->bmiHeader.biHeight = -new_h; /* top-down */
 
-    editor->regions_split_x = editor->framebuffer_width / 2;
-    editor->regions_split_y = editor->framebuffer_height / 2;
+    editor->regions_split_x = (editor->framebuffer_width - editor->regions_menu_size_x) / 2;
+    editor->regions_split_y = (editor->framebuffer_height - editor->regions_toolbar_size_y) / 2;
 
     /* TODO: unsafe to change the regions asynchronously here  */
     /*       update sizes and regions in the lmtyn_editor loop */
