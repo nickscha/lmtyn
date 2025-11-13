@@ -1654,7 +1654,7 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->regions_selected_region_index = -1;
     editor->regions_split_x = editor->framebuffer_width / 2;
     editor->regions_split_y = editor->framebuffer_height / 2;
-    editor->regions_split_size_min = 100;
+    editor->regions_split_size_min = 50;
     editor->regions_split_size_factor = 20;
     editor->regions_color_border = 0x404040;
     editor->regions_color_border_selected = 0x00FFCE1B;
