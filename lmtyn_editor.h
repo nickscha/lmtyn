@@ -102,6 +102,8 @@ typedef struct lmtyn_editor
     lmtyn_editor_selection_mode selection_mode;
 
     lmtyn_mesh *mesh;
+    u32 mesh_color_wireframe;
+
     lmtyn_shape_circle *circles;
     u32 circles_capacity;
     u32 circles_count;
@@ -109,7 +111,6 @@ typedef struct lmtyn_editor
     u32 circles_color;
     u32 circles_color_line;
     u32 circles_color_selected;
-
     f32 circles_last_x;
     f32 circles_last_y;
     f32 circles_last_z;
@@ -159,7 +160,7 @@ typedef struct lmtyn_editor_input
  * # [SECTION] Math
  * #############################################################################
  */
-LMTYN_API LMTYN_INLINE u32 lmtyn_absi(u32 x)
+LMTYN_API LMTYN_INLINE i32 lmtyn_absi(i32 x)
 {
     return (x < 0 ? -x : x);
 }
@@ -853,6 +854,60 @@ LMTYN_API void lmtyn_editor_world_to_screen(
     *sy = r->y + (u32)(ny * r->h);
 }
 
+LMTYN_API void lmtyn_editor_draw_line(
+    lmtyn_editor *editor,
+    u32 region_index,
+    i32 x0,
+    i32 y0,
+    i32 x1,
+    i32 y1,
+    u32 color)
+{
+    lmtyn_editor_region *r = &editor->regions[region_index];
+    i32 fb_w = (i32)editor->framebuffer_width;
+    i32 fb_h = (i32)editor->framebuffer_height;
+
+    i32 dx = lmtyn_absi(x1 - x0);
+    i32 sx = x0 < x1 ? 1 : -1;
+    i32 dy = -lmtyn_absi(y1 - y0);
+    i32 sy = y0 < y1 ? 1 : -1;
+    i32 err = dx + dy;
+
+    i32 x = x0;
+    i32 y = y0;
+
+    i32 max_steps = fb_w + fb_h; // prevent runaway
+    i32 steps = 0;
+
+    while (1)
+    {
+        if (++steps > max_steps)
+            break;
+
+        if (x >= (i32)r->x && x < (i32)(r->x + r->w) &&
+            y >= (i32)r->y && y < (i32)(r->y + r->h) &&
+            x >= 0 && x < fb_w && y >= 0 && y < fb_h)
+        {
+            editor->framebuffer[y * fb_w + x] = color;
+        }
+
+        if (x == x1 && y == y1)
+            break;
+
+        i32 e2 = 2 * err;
+        if (e2 >= dy)
+        {
+            err += dy;
+            x += sx;
+        }
+        if (e2 <= dx)
+        {
+            err += dx;
+            y += sy;
+        }
+    }
+}
+
 LMTYN_API void lmtyn_editor_draw_circle(
     lmtyn_editor *editor,
     u32 region_index,
@@ -1178,6 +1233,16 @@ LMTYN_API void lmtyn_editor_draw_circles(lmtyn_editor *editor)
 
             pr = (u32)(circle->radius * (r->w / (2.0f * editor->grid_scale)));
 
+            if (circle_prev)
+            {
+
+                u32 px_prev;
+                u32 py_prev;
+                lmtyn_editor_world_to_screen(editor, i, a_prev, b_prev, &px_prev, &py_prev);
+
+                lmtyn_editor_draw_line(editor, i, px_prev, py_prev, px, py, editor->circles_color_line);
+            }
+
             lmtyn_editor_draw_circle(
                 editor, i, px, py, pr,
                 c == editor->circles_selected_circle_index
@@ -1219,6 +1284,53 @@ LMTYN_API void lmtyn_editor_draw_region_labels(lmtyn_editor *editor)
             region->x + 5, region->y + region->h - 40,
             axis_up,
             editor->grid_color_axis);
+    }
+}
+
+LMTYN_API void lmtyn_editor_draw_mesh_wireframe(lmtyn_editor *editor)
+{
+    if (!editor->mesh || editor->mesh->vertices_size < 6 || editor->mesh->indices_size < 2)
+    {
+        return;
+    }
+
+    lmtyn_mesh *mesh = editor->mesh;
+
+    u32 i;
+
+    for (i = 0; i + 1 < mesh->indices_size; i += 2)
+    {
+        u32 i0 = mesh->indices[i];
+        u32 i1 = mesh->indices[i + 1];
+
+        /* Read vertices (assume format: x, y, z per vertex) */
+        f32 x0 = mesh->vertices[i0 * 3 + 0];
+        f32 y0 = mesh->vertices[i0 * 3 + 1];
+        f32 z0 = mesh->vertices[i0 * 3 + 2];
+
+        f32 x1 = mesh->vertices[i1 * 3 + 0];
+        f32 y1 = mesh->vertices[i1 * 3 + 1];
+        f32 z1 = mesh->vertices[i1 * 3 + 2];
+
+        /* Draw projections into each region */
+        {
+            u32 sx0, sy0, sx1, sy1;
+
+            /* XZ view */
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_XZ, x0, z0, &sx0, &sy0);
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_XZ, x1, z1, &sx1, &sy1);
+            lmtyn_editor_draw_line(editor, LMTYN_EDITOR_REGION_XZ, sx0, sy0, sx1, sy1, editor->mesh_color_wireframe);
+
+            /* YZ view */
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_YZ, y0, z0, &sx0, &sy0);
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_YZ, y1, z1, &sx1, &sy1);
+            lmtyn_editor_draw_line(editor, LMTYN_EDITOR_REGION_YZ, sx0, sy0, sx1, sy1, editor->mesh_color_wireframe);
+
+            /* XY view */
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_XY, x0, y0, &sx0, &sy0);
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_XY, x1, y1, &sx1, &sy1);
+            lmtyn_editor_draw_line(editor, LMTYN_EDITOR_REGION_XY, sx0, sy0, sx1, sy1, editor->mesh_color_wireframe);
+        }
     }
 }
 
@@ -1292,14 +1404,6 @@ LMTYN_API void lmtyn_editor_draw_3d_model(
     {
         return;
     }
-
-    /* Reset Mesh vertices/indices */
-    editor->mesh->vertices_size = 0;
-    editor->mesh->indices_size = 0;
-
-    /* Generate Mesh */
-    lmtyn_mesh_generate(editor->mesh, 0, editor->circles, editor->circles_count, 4);
-    lmtyn_mesh_normalize(editor->mesh, 0.0f, 0.0f, 0.0f, 1.0f);
 
     /* Draw Mesh to CSR Framebuffer */
     csr_render_clear_screen(ctx, clear_color);
@@ -1423,10 +1527,12 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT;
 
     editor->mesh = mesh;
+    editor->mesh_color_wireframe = 0x00666666;
+
     editor->circles = circles;
     editor->circles_capacity = circles_capacity;
     editor->circles_color = 0x00FFCE1B;
-    editor->circles_color_line = 0x00FFFFFF;
+    editor->circles_color_line = 0x00C59B00; /* 30 perc. darkened */
     editor->circles_color_selected = 0x00FF0000;
     editor->circles_last_radius = 1.0f;
 
@@ -1488,21 +1594,21 @@ LMTYN_API void lmtyn_editor_input_update(
         u32 max_split_x = editor->framebuffer_width - size_min;
 
         /* Horizontal Split */
-        if (input->key_left.pressed && editor->regions_split_x > size_min)
+        if (input->key_left.down && editor->regions_split_x > size_min)
         {
             editor->regions_split_x -= size_factor;
         }
-        if (input->key_right.pressed && editor->regions_split_x < max_split_x)
+        if (input->key_right.down && editor->regions_split_x < max_split_x)
         {
             editor->regions_split_x += size_factor;
         }
 
         /* Vertical Split */
-        if (input->key_up.pressed && editor->regions_split_y > size_min)
+        if (input->key_up.down && editor->regions_split_y > size_min)
         {
             editor->regions_split_y -= size_factor;
         }
-        if (input->key_down.pressed && editor->regions_split_y < max_split_y)
+        if (input->key_down.down && editor->regions_split_y < max_split_y)
         {
             editor->regions_split_y += size_factor;
         }
@@ -1782,7 +1888,18 @@ LMTYN_API void lmtyn_editor_render(
     lmtyn_editor_draw_grid(editor, LMTYN_EDITOR_REGION_XY);
     lmtyn_editor_draw_region_labels(editor);
 
+    /* Reset Mesh vertices/indices */
+    editor->mesh->vertices_size = 0;
+    editor->mesh->indices_size = 0;
+
+    /* Generate Mesh */
+    lmtyn_mesh_generate(editor->mesh, 0, editor->circles, editor->circles_count, 4);
+
+    lmtyn_editor_draw_mesh_wireframe(editor);
     lmtyn_editor_draw_circles(editor);
+
+    lmtyn_mesh_normalize(editor->mesh, 0.0f, 0.0f, 0.0f, 1.0f);
+
     lmtyn_editor_draw_3d_model(editor, ctx);
     lmtyn_editor_draw_borders(editor);
 
