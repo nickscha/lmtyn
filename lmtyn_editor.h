@@ -72,6 +72,16 @@ typedef enum lmtyn_editor_selection_mode
 
 } lmtyn_editor_selection_mode;
 
+typedef enum lmtyn_editor_wireframe_mode
+{
+
+    LMTYN_EDITOR_WIREFRAME_NONE = 0,
+    LMTYN_EDITOR_WIREFRAME_CIRCLE_BOXES,
+    LMTYN_EDITOR_WIREFRAME_MESH_WIREFRAME,
+    LMTYN_EDITOR_WIREFRAME_COUNT
+
+} lmtyn_editor_wireframe_mode;
+
 typedef struct lmtyn_editor
 {
     u32 *framebuffer;
@@ -100,6 +110,7 @@ typedef struct lmtyn_editor
     u32 grid_color_axis;
 
     lmtyn_editor_selection_mode selection_mode;
+    lmtyn_editor_wireframe_mode wireframe_mode;
 
     lmtyn_mesh *mesh;
     u32 mesh_color_wireframe;
@@ -1334,6 +1345,102 @@ LMTYN_API void lmtyn_editor_draw_mesh_wireframe(lmtyn_editor *editor)
     }
 }
 
+LMTYN_API void lmtyn_editor_draw_circle_boxes(lmtyn_editor *editor)
+{
+    if (!editor->circles || editor->circles_count < 2)
+    {
+        return;
+    }
+
+    for (u32 i = 0; i + 1 < editor->circles_count; ++i)
+    {
+        lmtyn_shape_circle *c0 = &editor->circles[i];
+        lmtyn_shape_circle *c1 = &editor->circles[i + 1];
+
+        /* direction from c0 to c1 */
+        f32 dx = c1->center_x - c0->center_x;
+        f32 dy = c1->center_y - c0->center_y;
+        f32 dz = c1->center_z - c0->center_z;
+
+        f32 length = lmtyn_sqrtf(dx * dx + dy * dy + dz * dz);
+
+        if (length < 1e-6f)
+        {
+            continue;
+        }
+
+        dx /= length;
+        dy /= length;
+        dz /= length;
+
+        /* simple perpendicular vectors */
+        f32 ux = -dy, uy = dx, uz = 0;
+        f32 vx = -dz * dx, vy = -dz * dy, vz = dx * dx + dy * dy;
+
+        /* normalize */
+        f32 u_len = lmtyn_sqrtf(ux * ux + uy * uy + uz * uz);
+        f32 v_len = lmtyn_sqrtf(vx * vx + vy * vy + vz * vz);
+        ux /= u_len;
+        uy /= u_len;
+        uz /= u_len;
+        vx /= v_len;
+        vy /= v_len;
+        vz /= v_len;
+
+        /* scale U/V for each circle's radius */
+        f32 ux0 = ux * c0->radius, uy0 = uy * c0->radius, uz0 = uz * c0->radius;
+        f32 vx0 = vx * c0->radius, vy0 = vy * c0->radius, vz0 = vz * c0->radius;
+
+        f32 ux1 = ux * c1->radius, uy1 = uy * c1->radius, uz1 = uz * c1->radius;
+        f32 vx1 = vx * c1->radius, vy1 = vy * c1->radius, vz1 = vz * c1->radius;
+
+        /* 8 corners of box */
+        f32 corners[8][3] = {
+            {c0->center_x + ux0 + vx0, c0->center_y + uy0 + vy0, c0->center_z + uz0 + vz0},
+            {c0->center_x + ux0 - vx0, c0->center_y + uy0 - vy0, c0->center_z + uz0 - vz0},
+            {c0->center_x - ux0 + vx0, c0->center_y - uy0 + vy0, c0->center_z - uz0 + vz0},
+            {c0->center_x - ux0 - vx0, c0->center_y - uy0 - vy0, c0->center_z - uz0 - vz0},
+
+            {c1->center_x + ux1 + vx1, c1->center_y + uy1 + vy1, c1->center_z + uz1 + vz1},
+            {c1->center_x + ux1 - vx1, c1->center_y + uy1 - vy1, c1->center_z + uz1 - vz1},
+            {c1->center_x - ux1 + vx1, c1->center_y - uy1 + vy1, c1->center_z - uz1 + vz1},
+            {c1->center_x - ux1 - vx1, c1->center_y - uy1 - vy1, c1->center_z - uz1 - vz1},
+        };
+
+        /* draw edges (12 edges) */
+        i32 edges[12][2] = {
+            {0, 1}, {1, 3}, {3, 2}, {2, 0}, /* c0 face */
+            {4, 5},
+            {5, 7},
+            {7, 6},
+            {6, 4}, /* c1 face */
+            {0, 4},
+            {1, 5},
+            {2, 6},
+            {3, 7} /* connections */
+        };
+
+        for (i32 e = 0; e < 12; ++e)
+        {
+            i32 a = edges[e][0];
+            i32 b = edges[e][1];
+            u32 sx0, sy0, sx1, sy1;
+
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_XZ, corners[a][0], corners[a][2], &sx0, &sy0);
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_XZ, corners[b][0], corners[b][2], &sx1, &sy1);
+            lmtyn_editor_draw_line(editor, LMTYN_EDITOR_REGION_XZ, sx0, sy0, sx1, sy1, editor->mesh_color_wireframe);
+
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_YZ, corners[a][1], corners[a][2], &sx0, &sy0);
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_YZ, corners[b][1], corners[b][2], &sx1, &sy1);
+            lmtyn_editor_draw_line(editor, LMTYN_EDITOR_REGION_YZ, sx0, sy0, sx1, sy1, editor->mesh_color_wireframe);
+
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_XY, corners[a][0], corners[a][1], &sx0, &sy0);
+            lmtyn_editor_world_to_screen(editor, LMTYN_EDITOR_REGION_XY, corners[b][0], corners[b][1], &sx1, &sy1);
+            lmtyn_editor_draw_line(editor, LMTYN_EDITOR_REGION_XY, sx0, sy0, sx1, sy1, editor->mesh_color_wireframe);
+        }
+    }
+}
+
 LMTYN_API void lmtyn_editor_draw_3d_framebuffer(lmtyn_editor *editor, csr_context *ctx)
 {
     lmtyn_editor_region *r = &editor->regions[LMTYN_EDITOR_REGION_RENDER];
@@ -1525,6 +1632,7 @@ LMTYN_API u8 lmtyn_editor_initialize(
     editor->snap_interval = 0.5f;
 
     editor->selection_mode = LMTYN_EDITOR_MODE_CIRCLE_PLACEMENT;
+    editor->wireframe_mode = LMTYN_EDITOR_WIREFRAME_MESH_WIREFRAME;
 
     editor->mesh = mesh;
     editor->mesh_color_wireframe = 0x00666666;
@@ -1895,7 +2003,15 @@ LMTYN_API void lmtyn_editor_render(
     /* Generate Mesh */
     lmtyn_mesh_generate(editor->mesh, 0, editor->circles, editor->circles_count, 4);
 
-    lmtyn_editor_draw_mesh_wireframe(editor);
+    if (editor->wireframe_mode == LMTYN_EDITOR_WIREFRAME_CIRCLE_BOXES)
+    {
+        lmtyn_editor_draw_circle_boxes(editor);
+    }
+    else if (editor->wireframe_mode == LMTYN_EDITOR_WIREFRAME_MESH_WIREFRAME)
+    {
+        lmtyn_editor_draw_mesh_wireframe(editor);
+    }
+
     lmtyn_editor_draw_circles(editor);
 
     lmtyn_mesh_normalize(editor->mesh, 0.0f, 0.0f, 0.0f, 1.0f);
