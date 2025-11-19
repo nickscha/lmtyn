@@ -1483,52 +1483,59 @@ LMTYN_API void lmtyn_editor_draw_circle_boxes(lmtyn_editor *editor)
         }
     }
 }
-
 LMTYN_API void lmtyn_editor_draw_3d_framebuffer(lmtyn_editor *editor, csr_context *ctx)
 {
     lmtyn_editor_region *r = &editor->regions[LMTYN_EDITOR_REGION_RENDER];
-
+    u32 *dst_row;
+    u32 dst_stride = editor->framebuffer_width;
     u32 y;
-    u32 x;
+
+    /* Calculate Fixed Point Steps (16.16 format) */
+    u32 step_x = (ctx->width << 16) / r->w;
+    u32 step_y = (ctx->height << 16) / r->h;
+
+    u32 src_y_fixed = 0;
+
+    /* Pre-calculate start pointer */
+    dst_row = editor->framebuffer + (r->y * dst_stride) + r->x;
 
     for (y = 0; y < r->h; ++y)
     {
+        u32 x;
+        u32 src_x_fixed = 0;
         u32 fb_y = r->y + y;
+        u32 sy = src_y_fixed >> 16;
+        csr_color *src_row_ptr;
 
         if (fb_y >= editor->framebuffer_height)
         {
             break;
         }
 
+        if (sy >= ctx->height)
+        {
+            sy = ctx->height - 1;
+        }
+
+        src_row_ptr = &ctx->framebuffer[sy * ctx->width];
+
         for (x = 0; x < r->w; ++x)
         {
-            u32 fb_x = r->x + x;
-
-            /* Sample CSR pixel at pixel center and flip Y */
-            u32 src_x = (u32)((x + 0.5f) * ctx->width / r->w);
-            u32 src_y = (u32)((y + 0.5f) * ctx->height / r->h);
-
+            u32 sx = src_x_fixed >> 16;
             csr_color *src;
 
-            if (fb_x >= editor->framebuffer_width)
+            if (sx >= ctx->width)
             {
-                break;
+                sx = ctx->width - 1;
             }
 
-            if (src_x >= ctx->width)
-            {
-                src_x = ctx->width - 1;
-            }
-
-            if (src_y >= ctx->height)
-            {
-                src_y = ctx->height - 1;
-            }
-
-            src = &ctx->framebuffer[src_y * ctx->width + src_x];
-
-            editor->framebuffer[fb_y * editor->framebuffer_width + fb_x] = (src->r << 16) | (src->g << 8) | (src->b);
+            src = src_row_ptr + sx;
+            dst_row[x] = (src->r << 16) | (src->g << 8) | (src->b);
+            src_x_fixed += step_x;
         }
+
+        src_y_fixed += step_y;
+        dst_row += dst_stride;
     }
 }
 
