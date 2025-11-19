@@ -571,58 +571,63 @@ LMTYN_API LMTYN_INLINE u8 lmtyn_editor_is_drawing_region(lmtyn_editor *editor)
 
 LMTYN_API void lmtyn_editor_draw_character(
     lmtyn_editor *editor,
-    u32 x,
-    u32 y,
-    u8 c,
-    u32 color_fg)
+    u32 x, u32 y, u8 c, u32 color_fg)
 {
-    u32 base_bytes_per_row;
-    u32 base_glyph_size;
+    u32 row, col;
+    u32 fb_w = editor->framebuffer_width;
+    u32 fb_h = editor->framebuffer_height;
+    u32 start_col = 0, end_col = editor->font_glyph_width;
+    u32 start_row = 0, end_row = editor->font_glyph_height;
+    u32 *dst_ptr_base;
+
+    u32 base_bytes_per_row = (LMTYN_EDITOR_FONT_GLYPH_WIDTH + 7) / 8;
+    u32 base_glyph_size = base_bytes_per_row * LMTYN_EDITOR_FONT_GLYPH_HEIGHT;
     u32 glyph_index;
     u8 *glyph;
-    u32 row, col;
 
-    /* Only draw printable ASCII characters */
     if (c < 32 || c > 126)
     {
         return;
     }
 
-    /* How many bytes per row for the glyph bitmap */
-    base_bytes_per_row = (LMTYN_EDITOR_FONT_GLYPH_WIDTH + 7) / 8;
-    base_glyph_size = base_bytes_per_row * LMTYN_EDITOR_FONT_GLYPH_HEIGHT;
+    /* Pre-Clip Bounds */
+    if (x >= fb_w || y >= fb_h)
+    {
+        return;
+    }
 
-    /* Get the glyph pointer in the font array */
+    if (x + end_col > fb_w)
+    {
+        end_col = fb_w - x;
+    }
+
+    if (y + end_row > fb_h)
+    {
+        end_row = fb_h - y;
+    }
+
     glyph_index = (c - 32) * base_glyph_size;
     glyph = &lmtyn_editor_font_data[glyph_index];
 
-    for (row = 0; row < editor->font_glyph_height; ++row)
+    /* Calculate base pointer to framebuffer */
+    dst_ptr_base = editor->framebuffer + (y * fb_w) + x;
+
+    for (row = start_row; row < end_row; ++row)
     {
-        /* Scale row index into original font */
         u32 sample_row = (row * LMTYN_EDITOR_FONT_GLYPH_HEIGHT) / editor->font_glyph_height;
+        u32 row_offset = sample_row * base_bytes_per_row;
 
-        for (col = 0; col < editor->font_glyph_width; ++col)
+        for (col = start_col; col < end_col; ++col)
         {
-            /* Scale column index into original font */
             u32 sample_col = (col * LMTYN_EDITOR_FONT_GLYPH_WIDTH) / editor->font_glyph_width;
-
-            u32 byte_index = sample_row * base_bytes_per_row + (sample_col / 8);
             u32 bit_mask = (u8)(1 << (7 - (sample_col % 8)));
 
-            /* 1 = background in font, 0 = foreground */
-            if (!(glyph[byte_index] & bit_mask))
+            if (!(glyph[row_offset + (sample_col / 8)] & bit_mask))
             {
-                i32 px = (i32)(x + col);
-                i32 py = (i32)(y + row);
-
-                /* Clip to framebuffer bounds */
-                if (px >= 0 && px < (i32)editor->framebuffer_width &&
-                    py >= 0 && py < (i32)editor->framebuffer_height)
-                {
-                    editor->framebuffer[py * editor->framebuffer_width + px] = color_fg;
-                }
+                dst_ptr_base[col] = color_fg;
             }
         }
+        dst_ptr_base += fb_w;
     }
 }
 
